@@ -125,6 +125,8 @@ export function useWorld({ live }: { readonly live: boolean } = { live: true }):
           store.setBaseline(next.version);
           setSummary(next);
           setError(null);
+          // The city is up even when the live stream cannot pass a proxy (Vercel Edge).
+          setStatus((s) => (s === 'connecting' ? 'live' : s));
         }
         if (!cancelled && live) {
           await store.catchUp();
