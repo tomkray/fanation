@@ -40,7 +40,8 @@ async function main(): Promise<number> {
       'X-Fanation-Client': 'muse-ingest',
     },
     body,
-    signal: AbortSignal.timeout(30_000),
+    // Bridge now awaits AvatarService.refresh for each portrait — allow headroom.
+    signal: AbortSignal.timeout(120_000),
   });
   const text = await response.text();
   let parsed: unknown = text;

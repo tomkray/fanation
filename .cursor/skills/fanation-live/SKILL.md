@@ -5,14 +5,16 @@ description: >-
   (Muse bridge or Graph poller), profile avatars (one AvatarService pipeline),
   Vercel proxy to this Mac, ledger/$FANT rules. Use when the user mentions
   Fanation live, Muse comments, avatar photos, mint houses from Instagram,
-  bridge ingest, Discovery token, or fanation-roan.vercel.app.
+  bridge ingest, Discovery token, fanation-roan.vercel.app, atualizar,
+  passar geral, or sweep Instagram posts.
 ---
 
 # Fanation live — city ops
 
 **One tube.** Muse and Meta are only different doors into the same
-`ingestComments` → ledger → `avatars.enqueue` path. Never invent a parallel
-mint or portrait system. Never print secrets. Never publish the reel unless asked.
+`ingestComments` → ledger → `avatars.enqueue` + `refresh` path. Never invent a
+parallel mint or portrait system. Never print secrets. Never publish the reel
+unless asked.
 
 ## One pipeline
 
@@ -20,7 +22,7 @@ mint or portrait system. Never print secrets. Never publish the reel unless aske
 comment (Muse JSON | Graph poll | webhook)
   → city.ingestComments
   → avatars.enqueue(fan, idol, owner)   // always
-  → AvatarService.refresh
+  → AvatarService.refresh (Muse bridge awaits before answer)
        → Business Discovery if FANATION_DISCOVERY_* set
        → else public profile og:image (same CDN cache)
   → GET /api/v1/avatars/:handle
@@ -31,6 +33,40 @@ When the Creator asks to “do it manually”, you still use this tube:
 it answers** (same `AvatarService` as Graph). Only if the response lists
 `avatars.missing` may you inject CDN bytes via `avatars.seed` /
 `npm run avatar:seed` (same cache, escape hatch only).
+
+## Atualizar / passar geral (DYNAMIC — always)
+
+Triggers (any language / shorthand): *atualizar*, *passa geral*, *sweep*,
+*vê os posts*, *novos comentários*, *atualiza a cidade*, or when the Creator
+drops a new Instagram permalink and asks to pull it in.
+
+**Do this every time — do not reuse a stale mental snapshot of the city.**
+
+1. **Registry** — read `scripts/live-posts.json`. If the Creator names a new
+   post URL, append it there before sweeping.
+2. **Pulse** — `bash scripts/live-status.sh` (local + Vercel). If local API is
+   down: ask Creator to run `bash scripts/reup-api.sh`. If public healthz fails
+   but local is up: recycle tunnel (`reup-public.sh`), update
+   `api/proxy.ts` + `api/healthz.ts` fallback URL, push when asked.
+3. **See comments live** — for **each** URL in `live-posts.json`, open the
+   Instagram permalink in the browser (or Muse JSON the Creator pasted) and
+   collect **every visible comment** (`authorUsername` + `text` + time if
+   shown). Login walls: ask Creator for a Muse dump of that post — never invent
+   comments.
+4. **Ingest** — write a batch JSON (temp under `/tmp` or `data/` — `data/` is
+   gitignored) and run:
+   ```bash
+   npm run muse:ingest -- /path/to/batch.json
+   ```
+   Same comment twice → no double mint (stable Muse hash). Expect response
+   `avatars.ok` / `avatars.missing`.
+5. **Prove** — re-run `bash scripts/live-status.sh` and confirm
+   [fanation-roan.vercel.app](https://fanation-roan.vercel.app/) shows the new
+   houses / ranking / Live feed. Report only the delta (new fans, idols, missing
+   avatars).
+
+Avatars are **not** a second step after a healthy Muse answer. They travel in
+the same request.
 
 ## Doors (not forks)
 
@@ -46,6 +82,7 @@ it answers** (same `AvatarService` as Graph). Only if the response lists
 2. Public: Vercel → Cloudflare tunnel → this Mac. Keep Mac + `cloudflared` up.
 3. Bridge secret in `.env` (24+). Never paste in chat.
 4. A1: one mint per `@`. Dedupe by Meta id or stable Muse hash.
+5. Tracked posts live in `scripts/live-posts.json` (committed).
 
 ## Muse batch
 
@@ -53,8 +90,8 @@ it answers** (same `AvatarService` as Graph). Only if the response lists
 npm run muse:ingest -- path/to/batch.json
 ```
 
-JSON: `mediaId` + `comments[{ authorUsername, text, timestamp?, commentId? }]`.
-Same batch twice → no double mint. Portraits enqueue automatically.
+JSON: `mediaUrl` or `mediaId` + `comments[{ authorUsername, text, timestamp?, commentId? }]`.
+Same batch twice → no double mint. Portraits enqueue + refresh automatically.
 
 ## Avatars
 
@@ -65,16 +102,16 @@ Same batch twice → no double mint. Portraits enqueue automatically.
 ## Prove
 
 ```bash
-curl -s http://127.0.0.1:8787/api/v1/config
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8787/api/v1/avatars/tomkray
+bash scripts/live-status.sh
 ```
 
 ## Push / Vercel
 
-Ledger + avatar **bytes** stay on the Mac. Push only for code/UI changes.
+Ledger + avatar **bytes** stay on the Mac. Push only for code/UI/proxy URL changes.
 
 ## Forbidden
 
 - A second “manual avatar pipeline” beside `AvatarService`.
 - Mixing demo journal with the real planet.
 - Printing tokens.
+- Skipping the post sweep when the Creator asked to atualizar.
