@@ -177,10 +177,10 @@ async def render_take(frontend_url: str, snapshot: CitySnapshot, out_dir: Path, 
             try:
                 page = await browser.new_page(viewport={"width": 1080, "height": 1920}, device_scale_factor=1)
                 await page.goto(url, wait_until="domcontentloaded", timeout=60_000)
-                await page.wait_for_function("window.__fanationCinematic && window.__fanationCinematic.ready", timeout=60_000)
+                await page.wait_for_function("window.__naoeumfaCinematic && window.__naoeumfaCinematic.ready", timeout=60_000)
                 started = time.monotonic()
                 for i in range(total_frames):
-                    await page.evaluate("t => window.__fanationCinematic.renderFrame(t)", i / fps)
+                    await page.evaluate("t => window.__naoeumfaCinematic.renderFrame(t)", i / fps)
                     await page.screenshot(path=str(frames_dir / f"frame_{i:05d}.jpg"), type="jpeg", quality=92)
                 log("frames_captured", frames=total_frames, seconds=round(time.monotonic() - started, 1))
             finally:

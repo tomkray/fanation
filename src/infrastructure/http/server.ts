@@ -87,7 +87,7 @@ const PROFILE_ROUTE = /^\/api\/v1\/profiles\/([a-z0-9._]{1,30})$/;
 const AVATAR_ROUTE = /^\/api\/v1\/avatars\/([a-z0-9._]{1,30})$/;
 const AD_REVIEW_ROUTE = /^\/api\/v1\/admin\/ads\/(ad_[0-9a-f]{16})\/(approve|reject)$/;
 
-export interface FanationServices {
+export interface NaoeumfaServices {
   readonly city: CityService;
   readonly avatars: AvatarService;
   readonly ads: AdService;
@@ -95,7 +95,7 @@ export interface FanationServices {
   readonly offers: OfferService;
 }
 
-export function createFanationServer(config: AppConfig, services: FanationServices): Server {
+export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServices): Server {
   const { city, avatars, ads, auth, offers } = services;
   const wallet: WalletContext = { config, city, auth, offers };
   /** Constant-time check of `Authorization: Bearer <FANATION_ADMIN_TOKEN>`; hashing equalises lengths. */

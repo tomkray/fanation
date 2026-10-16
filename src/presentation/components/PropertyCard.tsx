@@ -42,7 +42,7 @@ const DeedArt: React.FC<{ readonly detail: PropertyDetailDto; readonly portrait:
     setUrl(null);
     portrait(detail)
       .then((next) => !cancelled && setUrl(next))
-      .catch((err: unknown) => console.warn('[fanation] portrait failed', err));
+      .catch((err: unknown) => console.warn('[naoeumfa] portrait failed', err));
     return () => {
       cancelled = true;
     };

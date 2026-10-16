@@ -234,8 +234,8 @@ async def capture(frames: Path, seconds: float, timeline: list[tuple[float, floa
         try:
             page = await browser.new_page(viewport={"width": 1080, "height": 1920}, device_scale_factor=1)
             await page.goto(f"{FRONTEND}/?cinematic=1&capture=1&focus=bts.bighitofficial", wait_until="domcontentloaded", timeout=60_000)
-            await page.wait_for_function("() => typeof window.__fanationCinematic?.setShots === 'function'", timeout=90_000)
-            await page.evaluate("(shots) => window.__fanationCinematic.setShots(shots)", shots)
+            await page.wait_for_function("() => typeof window.__naoeumfaCinematic?.setShots === 'function'", timeout=90_000)
+            await page.evaluate("(shots) => window.__naoeumfaCinematic.setShots(shots)", shots)
             await page.evaluate(
                 """() => {
                   const reactFoot = document.querySelector('#reel-caption');
@@ -271,7 +271,7 @@ async def capture(frames: Path, seconds: float, timeline: list[tuple[float, floa
                         paint('p', line.sub, 'margin:0;font-size:32px;color:rgba(255,255,255,0.72);');
                         paint('p', line.cta, 'margin:8px 0 0;align-self:flex-start;padding:12px 22px;border-radius:999px;background:#0a84ff;color:#fff;font-size:32px;font-weight:700;');
                       }
-                      window.__fanationCinematic.renderFrame(t);
+                      window.__naoeumfaCinematic.renderFrame(t);
                     }""",
                     [t, line],
                 )

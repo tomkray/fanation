@@ -16,7 +16,7 @@ import { CommentSource } from '../instagram/commentSource.js';
 import { GraphCommentSource } from '../instagram/graphCommentSource.js';
 import { SimulatedCommentSource } from '../instagram/simulatedCommentSource.js';
 import { FileEventJournal } from '../persistence/eventJournal.js';
-import { createFanationServer } from './server.js';
+import { createNaoeumfaServer } from './server.js';
 
 /** Real pictures for the head of the ranking, refreshed hourly (stale after 24 h). */
 const AVATAR_WARM_TOP_N = 60;
@@ -106,7 +106,7 @@ function main(): void {
   const auth = new AuthService(`data/sessions${book}.json`);
   const offers = new OfferService(`data/offers${book}.json`);
   city.observeComments((events) => auth.observeComments(events));
-  const server = createFanationServer(config, { city, avatars, ads, auth, offers });
+  const server = createNaoeumfaServer(config, { city, avatars, ads, auth, offers });
   server.listen(config.port, config.host, () => {
     logger.info('api_listening', { url: `http://${config.host}:${config.port}`, commentSource: config.commentSource });
     poller?.start();

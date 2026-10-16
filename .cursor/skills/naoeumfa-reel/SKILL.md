@@ -1,5 +1,5 @@
 ---
-name: fanation-reel
+name: naoeumfa-reel
 description: >-
   Direct Não É Um Fã commercial reels. Match each spoken line to a different
   camera move and emotion, shoot real house close-ups from the live 3D city,

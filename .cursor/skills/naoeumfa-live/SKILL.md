@@ -1,5 +1,5 @@
 ---
-name: fanation-live
+name: naoeumfa-live
 description: >-
   Run Não É Um Fã (naoeumfa.com) day-one and live city ops: Instagram comment
   minting (Muse bridge or Graph poller), profile avatars (one AvatarService

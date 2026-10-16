@@ -902,7 +902,7 @@ export class IsometricCityEngine {
       try {
         return await loadModelKit(name, url(file), loader, this.world, this.materials, groupOf);
       } catch (err) {
-        console.warn(`[fanation] ${file} failed to load; that layer stays empty`, err);
+        console.warn(`[naoeumfa] ${file} failed to load; that layer stays empty`, err);
         return null;
       }
     };
@@ -978,7 +978,7 @@ export class IsometricCityEngine {
           typeof a === 'object' && a !== null && typeof a.id === 'string' && typeof a.slot === 'string' && typeof a.file === 'string' && /^[a-z0-9._-]+\.glb$/i.test(a.file)
       );
     } catch (err) {
-      console.warn('[fanation] catalogue manifest unreadable; built-in models only', err);
+      console.warn('[naoeumfa] catalogue manifest unreadable; built-in models only', err);
       return;
     }
     const base = new URL('.', new URL(manifestUrl, window.location.href)).toString();
@@ -988,7 +988,7 @@ export class IsometricCityEngine {
           const kit = await loadTexturedKit(entry.id, `${base}${entry.file}`, loader, this.world);
           this.catalog.set(entry.slot, [...(this.catalog.get(entry.slot) ?? []), kit]);
         } catch (err) {
-          console.warn(`[fanation] ${entry.file} failed to load; ${entry.slot} keeps its built-in model`, err);
+          console.warn(`[naoeumfa] ${entry.file} failed to load; ${entry.slot} keeps its built-in model`, err);
         }
       })
     );

@@ -29,7 +29,7 @@ import { IsometricCityEngine, WorldView } from './three/IsometricCityEngine.js';
 
 declare global {
   interface Window {
-    __fanationCinematic?: {
+    __naoeumfaCinematic?: {
       readonly ready: boolean;
       renderFrame: (tSeconds: number) => void;
       setShots: (shots: readonly unknown[]) => void;
@@ -82,7 +82,7 @@ export const App: React.FC = () => {
             setAds(next);
           }
         })
-        .catch((err: unknown) => console.warn('[fanation] ads unavailable; the sky stays empty', err));
+        .catch((err: unknown) => console.warn('[naoeumfa] ads unavailable; the sky stays empty', err));
     };
     load();
     const id = window.setInterval(load, ADS_REFRESH_MS);
@@ -119,7 +119,7 @@ export const App: React.FC = () => {
       onSelectProperty: (plotIndex) => setSelection({ kind: 'plot', plotIndex }),
       onVisibleChunks: (keys) => {
         if (!CINEMATIC) {
-          store.show(keys).catch((err: unknown) => console.warn('[fanation] chunk load failed; retrying on the next update', err));
+          store.show(keys).catch((err: unknown) => console.warn('[naoeumfa] chunk load failed; retrying on the next update', err));
         }
       },
       onViewChange: setView,
@@ -142,7 +142,7 @@ export const App: React.FC = () => {
       unsubscribe();
       engine.dispose();
       engineRef.current = null;
-      delete window.__fanationCinematic;
+      delete window.__naoeumfaCinematic;
     };
   }, [store]);
 
@@ -176,13 +176,13 @@ export const App: React.FC = () => {
           return;
         }
         engine.enableCinematic(focus, MANUAL_FRAMES);
-        window.__fanationCinematic = {
+        window.__naoeumfaCinematic = {
           ready: true,
           renderFrame: (t) => engine.renderCinematicFrame(t),
           setShots: (shots) => engine.setCinematicShots(shots),
         };
       })
-      .catch((err: unknown) => console.error('[fanation] cinematic setup failed', err));
+      .catch((err: unknown) => console.error('[naoeumfa] cinematic setup failed', err));
   }, [summary, config, store]);
 
   const focusHandle = (handle: string): void => {
@@ -212,7 +212,7 @@ export const App: React.FC = () => {
     const key = engineRef.current?.focusHome(detail);
     if (key) {
       // The fly takes under a second; the chunk has to be in memory when it lands.
-      void store.show([key]).catch((err: unknown) => console.warn('[fanation] home chunk failed', err));
+      void store.show([key]).catch((err: unknown) => console.warn('[naoeumfa] home chunk failed', err));
     }
     // The ring and the status line are the answer. The deed opens when the house itself is tapped.
     setSelection(null);
@@ -224,7 +224,7 @@ export const App: React.FC = () => {
     api
       .property(plotIndex)
       .then((d) => engineRef.current?.focusPoint(d.x, d.z))
-      .catch((err: unknown) => console.warn('[fanation] property lookup failed', err));
+      .catch((err: unknown) => console.warn('[naoeumfa] property lookup failed', err));
   };
 
   if (CINEMATIC) {
@@ -283,9 +283,9 @@ export const App: React.FC = () => {
 
         <nav className="glass topbar">
           <BrandLockup />
-          <span className={`live-pill live-pill--${status}`}>
+          <span className={`live-pill live-pill--${status}`} role="status" aria-label={status === 'live' ? 'Ao vivo' : status === 'connecting' ? 'Conectando…' : 'Reconectando…'}>
             <span className="live-dot" />
-            {status === 'live' ? 'Ao vivo' : status === 'connecting' ? 'Conectando…' : 'Reconectando…'}
+            <span className="live-pill__label">{status === 'live' ? 'Ao vivo' : status === 'connecting' ? 'Conectando…' : 'Reconectando…'}</span>
             {config?.demo && <span className="live-pill__demo">DEMO</span>}
           </span>
           <span className="topbar__stats">

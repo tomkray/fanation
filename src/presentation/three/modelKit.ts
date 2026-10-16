@@ -122,7 +122,7 @@ export async function loadModelKit(
   for (const bucket of buckets.values()) {
     const merged = mergeGeometries(bucket.geometries, false);
     if (!merged) {
-      console.warn(`[fanation] could not merge ${name}/${bucket.materialName}`);
+      console.warn(`[naoeumfa] could not merge ${name}/${bucket.materialName}`);
       continue;
     }
     const runtime = materials.get(bucket.materialName) ?? FALLBACK_MATERIAL;
@@ -191,7 +191,7 @@ export async function loadTexturedKit(name: string, url: string, loader: GLTFLoa
   for (const [material, geometries] of buckets) {
     const merged = mergeGeometries(geometries, false);
     if (!merged) {
-      console.warn(`[fanation] could not merge ${name}/${material.name || 'material'}`);
+      console.warn(`[naoeumfa] could not merge ${name}/${material.name || 'material'}`);
       continue;
     }
     if (material instanceof THREE.MeshStandardMaterial) {

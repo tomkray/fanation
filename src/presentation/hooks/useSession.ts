@@ -28,7 +28,7 @@ export function useSession(worldVersion: number): Session {
         if (err instanceof ApiError && err.status === 401) {
           setMe(null);
         } else {
-          console.warn('[fanation] profile refresh failed; keeping the last one', err);
+          console.warn('[naoeumfa] profile refresh failed; keeping the last one', err);
         }
       })
       .finally(() => !cancelled && setLoading(false));
