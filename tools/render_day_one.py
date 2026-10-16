@@ -194,7 +194,7 @@ def shots_for(timeline: list[tuple[float, float, dict]]) -> list[dict]:
         kind = line["shot"]
         end = end + 0.22
         if kind == "wide":
-            shot = dict(move="drift", x=0, z=0, x1=bts_x * 0.08, z1=bts_z * 0.08, zoom=0.5, zoom1=0.72, azimuth=0.2, azimuth1=0.55, polar=0.5, polar1=0.66)
+            shot = dict(move="drift", view="planet", x=0, z=0, x1=0, z1=0, zoom=0.92, zoom1=1.08, azimuth=0.35, azimuth1=0.85, polar=0.82, polar1=0.98)
         elif kind == "push":
             shot = dict(move="snap", x=bts_x * 0.55, z=bts_z * 0.55, x1=bts_x, z1=bts_z, zoom=1.1, zoom1=5.5, azimuth=2.4, azimuth1=2.55, polar=0.7, polar1=0.95)
         elif kind == "block":

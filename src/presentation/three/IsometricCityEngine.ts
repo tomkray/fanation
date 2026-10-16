@@ -224,6 +224,8 @@ interface CinematicShot {
   readonly polar1: number;
   /** Which curve this cut uses. Two shots in a row never share one. */
   readonly move: string;
+  /** `planet` frames the whole world. Every other cut stays in the city. */
+  readonly view: 'planet' | 'city';
 }
 
 /** Each move is a different curve, so a reel never feels like one repeated push. */
@@ -785,6 +787,7 @@ export class IsometricCityEngine {
         polar: THREE.MathUtils.clamp(polar, 0.35, 1.48),
         polar1: THREE.MathUtils.clamp(num('polar1', polar), 0.35, 1.48),
         move: typeof source.move === 'string' ? source.move : 'ease',
+        view: source.view === 'planet' ? 'planet' : 'city',
       });
     }
     this.cinematicShots = shots;
@@ -798,9 +801,19 @@ export class IsometricCityEngine {
       const u = THREE.MathUtils.clamp((tSeconds - shot.t0) / span, 0, 1);
       const ease = shotEase(shot.move, u);
       const punch = shot.move === 'snap' ? Math.exp(-(tSeconds - shot.t0) * 9) * 0.12 : 0;
-      const target = new THREE.Vector3(THREE.MathUtils.lerp(shot.x, shot.x1, ease), 0, THREE.MathUtils.lerp(shot.z, shot.z1, ease));
-      this.placeCamera(target, lerpAngle(shot.azimuth, shot.azimuth1, ease), THREE.MathUtils.lerp(shot.polar, shot.polar1, ease));
-      this.camera.zoom = this.fitZoom * THREE.MathUtils.lerp(shot.zoom, shot.zoom1, ease) * (1 + punch);
+      if (shot.view === 'planet') {
+        this.applyView('planet');
+        const center = new THREE.Vector3(0, -this.planetRadius, 0);
+        this.placeCamera(center, lerpAngle(shot.azimuth, shot.azimuth1, ease), THREE.MathUtils.lerp(shot.polar, shot.polar1, ease));
+        this.camera.zoom = this.planetFrameZoom() * THREE.MathUtils.lerp(shot.zoom, shot.zoom1, ease);
+      } else {
+        if (this.view !== 'city') {
+          this.applyView('city');
+        }
+        const target = new THREE.Vector3(THREE.MathUtils.lerp(shot.x, shot.x1, ease), 0, THREE.MathUtils.lerp(shot.z, shot.z1, ease));
+        this.placeCamera(target, lerpAngle(shot.azimuth, shot.azimuth1, ease), THREE.MathUtils.lerp(shot.polar, shot.polar1, ease));
+        this.camera.zoom = this.fitZoom * THREE.MathUtils.lerp(shot.zoom, shot.zoom1, ease) * (1 + punch);
+      }
     } else {
       const focus = this.cinematicFocus ?? new THREE.Vector3();
       const eased = 1 - (1 - Math.min(1, tSeconds / 8)) ** 3;
@@ -1662,25 +1675,112 @@ export class IsometricCityEngine {
 
   // ---------------------------------------------------------------- planet
 
+  /** Night world: ocean, land, ice and distant city glow. The live cities sit on top of this. */
+  private paintPlanetMaps(): { readonly color: THREE.CanvasTexture; readonly glow: THREE.CanvasTexture; readonly clouds: THREE.CanvasTexture } {
+    const width = 1024;
+    const height = 512;
+    const colorCanvas = document.createElement('canvas');
+    colorCanvas.width = width;
+    colorCanvas.height = height;
+    const colorCtx = colorCanvas.getContext('2d');
+    const glowCanvas = document.createElement('canvas');
+    glowCanvas.width = width;
+    glowCanvas.height = height;
+    const glowCtx = glowCanvas.getContext('2d');
+    const cloudCanvas = document.createElement('canvas');
+    cloudCanvas.width = width;
+    cloudCanvas.height = height;
+    const cloudCtx = cloudCanvas.getContext('2d');
+    if (!colorCtx || !glowCtx || !cloudCtx) {
+      const blank = new THREE.CanvasTexture(colorCanvas);
+      return { color: blank, glow: blank, clouds: blank };
+    }
+    const ocean = colorCtx.createLinearGradient(0, 0, 0, height);
+    ocean.addColorStop(0, '#1a2748');
+    ocean.addColorStop(0.18, '#0c1c3a');
+    ocean.addColorStop(0.5, '#071428');
+    ocean.addColorStop(0.82, '#0c1c3a');
+    ocean.addColorStop(1, '#182444');
+    colorCtx.fillStyle = ocean;
+    colorCtx.fillRect(0, 0, width, height);
+    glowCtx.fillStyle = '#000000';
+    glowCtx.fillRect(0, 0, width, height);
+    for (let i = 0; i < 520; i += 1) {
+      const x = hash01(i, 2) * width;
+      const y = height * (0.12 + hash01(i, 5) * 0.76);
+      const rx = 10 + hash01(i, 8) * 70;
+      const ry = rx * (0.35 + hash01(i, 3) * 0.4);
+      colorCtx.fillStyle = `rgba(${14 + hash01(i, 1) * 18}, ${36 + hash01(i, 4) * 28}, ${48 + hash01(i, 6) * 20}, ${0.35 + hash01(i, 7) * 0.5})`;
+      colorCtx.beginPath();
+      colorCtx.ellipse(x, y, rx, ry, hash01(i, 9) * Math.PI, 0, Math.PI * 2);
+      colorCtx.fill();
+    }
+    colorCtx.fillStyle = 'rgba(210, 224, 236, 0.55)';
+    colorCtx.fillRect(0, 0, width, 18);
+    colorCtx.fillRect(0, height - 18, width, 18);
+    for (let i = 0; i < 1400; i += 1) {
+      const x = hash01(i, 11) * width;
+      const y = height * (0.16 + hash01(i, 12) * 0.68);
+      const warm = hash01(i, 13) > 0.72;
+      glowCtx.fillStyle = warm ? 'rgba(255, 196, 120, 0.85)' : 'rgba(120, 196, 255, 0.7)';
+      glowCtx.fillRect(x, y, hash01(i, 14) > 0.92 ? 2 : 1, 1);
+    }
+    for (let i = 0; i < 180; i += 1) {
+      const x = hash01(i, 21) * width;
+      const y = hash01(i, 22) * height;
+      cloudCtx.fillStyle = `rgba(255, 255, 255, ${0.08 + hash01(i, 23) * 0.22})`;
+      cloudCtx.beginPath();
+      cloudCtx.ellipse(x, y, 18 + hash01(i, 24) * 90, 6 + hash01(i, 25) * 16, hash01(i, 26), 0, Math.PI * 2);
+      cloudCtx.fill();
+    }
+    const color = new THREE.CanvasTexture(colorCanvas);
+    const glow = new THREE.CanvasTexture(glowCanvas);
+    const clouds = new THREE.CanvasTexture(cloudCanvas);
+    for (const texture of [color, glow, clouds]) {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 4;
+    }
+    return { color, glow, clouds };
+  }
+
   private createPlanetBody(): THREE.Group {
     const body = new THREE.Group();
+    const maps = this.paintPlanetMaps();
     const surface = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 96, 64),
-      new THREE.MeshStandardMaterial({ color: '#0c1430', roughness: 0.9, emissive: '#060c22', emissiveIntensity: 0.8 })
+      new THREE.SphereGeometry(1, 128, 96),
+      new THREE.MeshStandardMaterial({
+        map: maps.color,
+        emissiveMap: maps.glow,
+        emissive: '#ffffff',
+        emissiveIntensity: 1.1,
+        roughness: 0.62,
+        metalness: 0.12,
+      })
     );
-    const graticule = new THREE.LineSegments(
-      new THREE.WireframeGeometry(new THREE.SphereGeometry(1.002, 36, 18)),
-      new THREE.LineBasicMaterial({ color: '#1f2d5c', transparent: true, opacity: 0.3, depthWrite: false })
+    const clouds = new THREE.Mesh(
+      new THREE.SphereGeometry(1.018, 96, 64),
+      new THREE.MeshStandardMaterial({
+        map: maps.clouds,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        roughness: 1,
+      })
     );
+    clouds.name = 'planet-clouds';
     const atmosphere = new THREE.Mesh(
-      new THREE.SphereGeometry(1.035, 64, 48),
-      new THREE.MeshBasicMaterial({ color: '#3ad6ff', transparent: true, opacity: 0.16, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })
+      new THREE.SphereGeometry(1.045, 80, 56),
+      new THREE.MeshBasicMaterial({ color: '#7ad7ff', transparent: true, opacity: 0.22, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })
     );
-    for (const obj of [surface, graticule, atmosphere]) {
+    const limb = new THREE.Mesh(
+      new THREE.SphereGeometry(1.09, 64, 48),
+      new THREE.MeshBasicMaterial({ color: '#3ad6ff', transparent: true, opacity: 0.08, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    for (const obj of [surface, clouds, atmosphere, limb]) {
       obj.raycast = () => undefined;
     }
     // The group pivots on the planet's centre so the inhabited cap can be turned towards the camera.
-    body.add(surface, graticule, atmosphere);
+    body.add(surface, clouds, atmosphere, limb);
     return body;
   }
 
@@ -1693,7 +1793,7 @@ export class IsometricCityEngine {
       }
       const capacity = Math.max(64, chunks.length * 2);
       this.planetLights = new THREE.InstancedMesh(
-        new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
+        new THREE.SphereGeometry(0.5, 10, 8),
         new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }),
         capacity
       );
@@ -1705,12 +1805,12 @@ export class IsometricCityEngine {
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3();
-    const footprint = CHUNK_PITCH * 0.34;
+      const footprint = CHUNK_PITCH * 0.22;
     chunks.forEach((chunk, i) => {
-      const position = toPlanet(chunk.x, chunk.z, this.planetRadius);
+      const position = toPlanet(chunk.x, chunk.z, this.planetRadius, 8 + Math.sqrt(chunk.count));
       q.setFromUnitVectors(up, position.clone().normalize());
-      const height = 30 + Math.sqrt(chunk.count) * 12;
-      m.compose(position, q, s.set(footprint, height, footprint));
+      const glow = footprint * (0.55 + Math.min(1.4, Math.sqrt(chunk.count) / 8));
+      m.compose(position, q, s.set(glow, glow * 0.45, glow));
       this.planetLights?.setMatrixAt(i, m);
       this.planetLights?.setColorAt(i, new THREE.Color(chunk.colorHex));
     });
@@ -1762,6 +1862,10 @@ export class IsometricCityEngine {
       const towardCamera = this.camera.position.clone().sub(this.controls.target).normalize();
       this.planetGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), towardCamera);
       this.planetGroup.updateMatrixWorld(true);
+      const clouds = this.planetBody.getObjectByName('planet-clouds');
+      if (clouds) {
+        clouds.rotation.y = seconds * 0.015;
+      }
     }
 
     const detail = zoomRatio >= DETAIL_ZOOM_RATIO || this.cinematicFocus !== null;

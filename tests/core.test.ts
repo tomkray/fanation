@@ -284,4 +284,18 @@ describe('city service and journal replay', () => {
     expect(live.changesSince(0).properties.length).toBe(live.stateView.lands.length);
     expect(computeCityStandings(replayed.stateView as CityState)[0].fandomHandle).toBe('realmadrid');
   });
+
+  it('starts empty and ignores comments from before the planet opened', () => {
+    const journal = new MemoryEventJournal();
+    const openedAt = 5_000;
+    const city = new CityService(DEFAULT_LEDGER_CONFIG, journal, (err) => { throw err; }, undefined, openedAt);
+    expect(city.boot()).toBe(0);
+    expect(city.stateView.lands).toHaveLength(0);
+
+    city.ingestComments([{ ...comment('old_fan', '@taylorswift'), receivedAtMs: 1_000 }], 'instagram_poll');
+    expect(city.stateView.lands).toHaveLength(0);
+
+    city.ingestComments([{ ...comment('first_owner', '@taylorswift'), receivedAtMs: 6_000 }], 'instagram_poll');
+    expect(city.stateView.lands.map((land) => land.minterHandle)).toEqual(['taylorswift', 'first_owner']);
+  });
 });

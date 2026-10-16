@@ -22,6 +22,9 @@ const REFRESH_AFTER_MS = 24 * 3_600_000;
 /** Accounts the API cannot look up (personal, private, renamed) are retried weekly. */
 const UNAVAILABLE_RETRY_MS = 7 * 24 * 3_600_000;
 const WARM_DELAY_MS = 1_500;
+/** One lookup at a time. At this pace a busy launch still finishes in hours, not a burst. */
+const MAX_LOOKUPS_PER_HOUR = 400;
+const MAX_QUEUE = 2_000;
 
 interface AvatarMeta {
   readonly handle: string;
@@ -40,6 +43,9 @@ export interface AvatarServiceOptions {
   readonly accessToken: string | null;
   readonly fetchImpl?: typeof fetch;
   readonly nowMs?: () => number;
+  /** Test seam. Production uses the hourly cap above. */
+  readonly maxLookupsPerHour?: number;
+  readonly warmDelayMs?: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -58,11 +64,19 @@ export function isAllowedImageUrl(raw: string): boolean {
 export class AvatarService {
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
-  private warming = false;
+  private readonly maxLookupsPerHour: number;
+  private readonly warmDelayMs: number;
+  private readonly queue: string[] = [];
+  private readonly queued = new Set<string>();
+  private readonly lookupsAtMs: number[] = [];
+  private pumping = false;
+  private resumeTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly options: AvatarServiceOptions) {
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.now = options.nowMs ?? Date.now;
+    this.maxLookupsPerHour = options.maxLookupsPerHour ?? MAX_LOOKUPS_PER_HOUR;
+    this.warmDelayMs = options.warmDelayMs ?? WARM_DELAY_MS;
     mkdirSync(options.directory, { recursive: true });
   }
 
@@ -89,23 +103,31 @@ export class AvatarService {
     return meta?.available && meta.name ? meta.name : null;
   }
 
-  /** Fetches handles that are missing or stale, one at a time, never overlapping. */
-  async warm(handles: readonly string[]): Promise<void> {
-    if (!this.enabled || this.warming) {
+  /**
+   * Ask for pictures of @s the city already knows. Missing and stale ones wait
+   * in one queue. The public route must not call this with a stranger's name:
+   * that would turn the endpoint into an open scraper.
+   */
+  enqueue(handles: readonly string[]): void {
+    if (!this.enabled) {
       return;
     }
-    this.warming = true;
-    try {
-      for (const handle of handles) {
-        if (!HANDLE_PATTERN.test(handle) || !this.isStale(handle)) {
-          continue;
-        }
-        await this.refresh(handle);
-        await new Promise((resolve) => setTimeout(resolve, WARM_DELAY_MS));
+    for (const handle of handles) {
+      if (!HANDLE_PATTERN.test(handle) || this.queued.has(handle) || !this.isStale(handle)) {
+        continue;
       }
-    } finally {
-      this.warming = false;
+      if (this.queue.length >= MAX_QUEUE) {
+        break;
+      }
+      this.queue.push(handle);
+      this.queued.add(handle);
     }
+    this.pump();
+  }
+
+  /** @deprecated Callers enqueue. Kept so a warm pass is just a priority enqueue. */
+  async warm(handles: readonly string[]): Promise<void> {
+    this.enqueue(handles);
   }
 
   async refresh(handle: string): Promise<boolean> {
@@ -136,6 +158,55 @@ export class AvatarService {
       logger.warn('avatar_refresh_failed', { handle, message: err instanceof Error ? err.message : String(err) });
       return false;
     }
+  }
+
+  private pump(): void {
+    if (this.pumping || !this.enabled) {
+      return;
+    }
+    this.pumping = true;
+    void this.drain();
+  }
+
+  private async drain(): Promise<void> {
+    try {
+      while (this.queue.length > 0) {
+        if (!this.takeBudget()) {
+          this.resumeTimer = setTimeout(() => {
+            this.resumeTimer = null;
+            this.pumping = false;
+            this.pump();
+          }, 60_000);
+          this.resumeTimer.unref?.();
+          return;
+        }
+        const handle = this.queue.shift();
+        if (!handle) {
+          break;
+        }
+        this.queued.delete(handle);
+        await this.refresh(handle);
+        if (this.warmDelayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, this.warmDelayMs));
+        }
+      }
+    } finally {
+      if (this.resumeTimer === null) {
+        this.pumping = false;
+      }
+    }
+  }
+
+  private takeBudget(): boolean {
+    const now = this.now();
+    while (this.lookupsAtMs.length > 0 && now - this.lookupsAtMs[0] >= 3_600_000) {
+      this.lookupsAtMs.shift();
+    }
+    if (this.lookupsAtMs.length >= this.maxLookupsPerHour) {
+      return false;
+    }
+    this.lookupsAtMs.push(now);
+    return true;
   }
 
   private isStale(handle: string): boolean {

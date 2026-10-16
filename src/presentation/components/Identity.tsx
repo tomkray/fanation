@@ -21,12 +21,29 @@ export interface AvatarProps {
 
 export const Avatar: React.FC<AvatarProps> = ({ handle, name, colorHex = '#3ad6ff', size = 'md' }) => {
   const enabled = useContext(AvatarsEnabled);
-  const [failed, setFailed] = useState(false);
-  const src = enabled && !failed ? avatarUrl(handle) : null;
+  const [attempt, setAttempt] = useState(0);
+  const picture = enabled && attempt < 2 ? avatarUrl(handle) : null;
+  const src = picture && attempt > 0 ? `${picture}?r=1` : picture;
   const initial = (name ?? handle).replace(/^@/, '').slice(0, 1).toUpperCase();
   return (
     <span className={`avatar avatar--${size}`} style={{ borderColor: colorHex, backgroundColor: src ? undefined : colorHex }} aria-hidden="true">
-      {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} /> : initial}
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => {
+            if (attempt === 0) {
+              window.setTimeout(() => setAttempt(1), 4_000);
+              return;
+            }
+            setAttempt(2);
+          }}
+        />
+      ) : (
+        initial
+      )}
     </span>
   );
 };

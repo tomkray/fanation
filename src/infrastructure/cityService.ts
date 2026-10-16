@@ -205,7 +205,9 @@ export class CityService {
     ledgerConfig: CityLedgerConfig,
     private readonly journal: EventJournal,
     private readonly onFatal: (err: Error) => void,
-    momentumWindowMs: number = DEFAULT_MOMENTUM_WINDOW_MS
+    momentumWindowMs: number = DEFAULT_MOMENTUM_WINDOW_MS,
+    /** Comments older than this never mint. Null keeps every comment (the local demo). */
+    private readonly liveFromMs: number | null = null
   ) {
     this.state = createCityState(ledgerConfig);
     this.momentum = new MomentumTracker(momentumWindowMs);
@@ -261,7 +263,8 @@ export class CityService {
 
   /** Earliest comment first, so arrival order (and therefore proximity) is fair. */
   ingestComments(events: readonly InstagramCommentEvent[], source: CommentSourceName): CommentProcessingOutcome[] {
-    const fresh = events
+    const opened = events.filter((event) => this.liveFromMs === null || event.receivedAtMs >= this.liveFromMs);
+    const fresh = opened
       .filter((e) => !this.state.processedCommentIds.has(e.commentId))
       .sort((a, b) => a.receivedAtMs - b.receivedAtMs || a.commentId.localeCompare(b.commentId));
     for (const observer of this.commentObservers) {
@@ -544,6 +547,11 @@ export class CityService {
     }
     sales.sort((a, b) => b.settledAtIso.localeCompare(a.settledAtIso));
     return { listing, sales, pendingOffers };
+  }
+
+  /** True when this @ already lives in the city, so a portrait lookup is not an open search. */
+  knowsHandle(handle: string): boolean {
+    return this.state.activeHandles.has(handle) || this.state.plotIndexByMinter.has(handle) || (this.state.plotsByOwner.get(handle)?.size ?? 0) > 0;
   }
 
   /** Handles worth showing a real profile picture for: the head of the ranking. */

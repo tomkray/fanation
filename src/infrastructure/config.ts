@@ -44,6 +44,8 @@ export interface AppConfig {
     readonly officialUsername: string | null;
   };
   readonly commentSource: CommentSourceMode;
+  /** Instagram comments older than this are ignored. Null only while the demo is on. */
+  readonly liveFromMs: number | null;
   readonly pollIntervalSeconds: number;
   readonly pollMediaLimit: number;
   /** Ranking movement (▲▼, %) is measured against the ranking this long ago. */
@@ -105,6 +107,13 @@ function readAdminToken(env: NodeJS.ProcessEnv): string | null {
   return value;
 }
 
+function metaSecret(env: NodeJS.ProcessEnv, name: string, commentSource: CommentSourceMode, demo: boolean): string {
+  if (commentSource === 'instagram') {
+    return requireSecret(env, name, false);
+  }
+  return readEnv(env, name) ?? (demo ? requireSecret(env, name, true) : '');
+}
+
 function readCryptoRail(env: NodeJS.ProcessEnv, prefix: string): CryptoRail | undefined {
   const address = readEnv(env, `${prefix}_ADDRESS`);
   const network = readEnv(env, `${prefix}_NETWORK`);
@@ -140,8 +149,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
 
   const pixKey = readEnv(env, 'FANATION_PIX_KEY');
-  if (!demo && pixKey === null) {
-    throw new Error('FANATION_PIX_KEY is required outside demo mode.');
+  const liveFromRaw = readEnv(env, 'FANATION_LIVE_FROM');
+  const liveFromMs = liveFromRaw === null ? null : Date.parse(liveFromRaw);
+  if (liveFromRaw !== null && !Number.isFinite(liveFromMs)) {
+    throw new Error('FANATION_LIVE_FROM must be an ISO-8601 instant.');
+  }
+  if (commentSource === 'instagram' && liveFromMs === null) {
+    throw new Error('FANATION_LIVE_FROM is required when reading Instagram. Set it to the minute the planet opens, so older comments do not mint the first homes.');
   }
   const officialUsername = readEnv(env, 'FANATION_IG_USERNAME') ?? OFFICIAL_INSTAGRAM_HANDLE;
   // Simulated fans live in their own book, so the real city starts at plot #0.
@@ -161,8 +175,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       accessToken: readEnv(env, 'FANATION_DISCOVERY_ACCESS_TOKEN'),
     },
     meta: {
-      appSecret: requireSecret(env, 'FANATION_META_APP_SECRET', demo),
-      verifyToken: requireSecret(env, 'FANATION_META_VERIFY_TOKEN', demo),
+      appSecret: metaSecret(env, 'FANATION_META_APP_SECRET', commentSource, demo),
+      verifyToken: metaSecret(env, 'FANATION_META_VERIFY_TOKEN', commentSource, demo),
       graphBaseUrl: readEnv(env, 'FANATION_GRAPH_BASE_URL') ?? DEFAULT_GRAPH_BASE_URL,
       tokenTransport: transport,
       igUserId,
@@ -170,6 +184,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       officialUsername: officialUsername.replace(/^@/, '').toLowerCase(),
     },
     commentSource,
+    liveFromMs,
     pollIntervalSeconds: readInt(env, 'FANATION_POLL_INTERVAL_SECONDS', commentSource === 'simulated' ? 6 : 60, 2, 86_400),
     pollMediaLimit: readInt(env, 'FANATION_POLL_MEDIA_LIMIT', 10, 1, 50),
     momentumWindowSeconds: readInt(env, 'FANATION_MOMENTUM_WINDOW_SECONDS', commentSource === 'simulated' ? 60 : 3_600, 10, 604_800),
@@ -178,7 +193,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     adminToken: readAdminToken(env),
     adsPath: env.FANATION_ADS_PATH?.trim() || 'data/ads.json',
     payments: {
-      webhookSecret: requireSecret(env, 'FANATION_PAYMENT_WEBHOOK_SECRET', demo),
+      webhookSecret:
+        pixKey !== null || readCryptoRail(env, 'FANATION_USDT') || readCryptoRail(env, 'FANATION_USDC') || readCryptoRail(env, 'FANATION_BTC')
+          ? requireSecret(env, 'FANATION_PAYMENT_WEBHOOK_SECRET', demo)
+          : (readEnv(env, 'FANATION_PAYMENT_WEBHOOK_SECRET') ?? ''),
       pixKey,
       pixMerchantName: readEnv(env, 'FANATION_PIX_MERCHANT_NAME') ?? 'FANATION CLUB',
       pixMerchantCity: readEnv(env, 'FANATION_PIX_MERCHANT_CITY') ?? 'SAO PAULO',

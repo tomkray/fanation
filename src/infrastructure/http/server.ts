@@ -224,6 +224,10 @@ export function createFanationServer(config: AppConfig, services: FanationServic
         if (avatar) {
           const image = avatars.read(avatar[1]);
           if (!image) {
+            if (avatars.enabled && city.knowsHandle(avatar[1])) {
+              avatars.enqueue([avatar[1]]);
+            }
+            res.setHeader('Cache-Control', 'no-store');
             return sendError(res, 404, 'NO_AVATAR', 'No profile picture for this @.');
           }
           res.writeHead(200, { 'Content-Type': image.contentType, 'Cache-Control': 'public, max-age=3600' });

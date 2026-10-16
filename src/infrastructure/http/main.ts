@@ -42,7 +42,8 @@ function main(): void {
       logger.error('journal_write_failed_halting', { message: err.message });
       process.exit(1);
     },
-    config.momentumWindowSeconds * 1000
+    config.momentumWindowSeconds * 1000,
+    config.liveFromMs
   );
   city.boot();
   if (config.commentSource === 'instagram' && city.journalSources.has('simulated')) {
@@ -51,6 +52,8 @@ function main(): void {
         'set FANATION_JOURNAL_PATH to a new file (default data/ledger.jsonl).'
     );
   }
+
+  const avatars = new AvatarService(config.avatars);
 
   let source: CommentSource | null = null;
   if (config.commentSource === 'instagram' && config.meta.igAccessToken && config.meta.igUserId) {
@@ -69,14 +72,21 @@ function main(): void {
 
   const poller = source
     ? new CommentPoller(source, config.pollIntervalSeconds * 1000, (events, sourceName) => {
-        city.ingestComments(events, sourceName);
+        const outcomes = city.ingestComments(events, sourceName);
+        const portraits: string[] = [];
+        for (const outcome of outcomes) {
+          if (outcome.status === 'REJECTED') {
+            continue;
+          }
+          portraits.push(outcome.land.minterHandle, outcome.idol.minterHandle, outcome.land.ownerHandle);
+        }
+        avatars.enqueue(portraits);
         if (config.sandbox) {
           maybeCreateDemoListings(city, Date.now());
         }
       })
     : null;
 
-  const avatars = new AvatarService(config.avatars);
   const warmAvatars = (): void => {
     void avatars.warm(city.topIdolHandles(AVATAR_WARM_TOP_N));
   };
