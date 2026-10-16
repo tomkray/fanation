@@ -12,6 +12,8 @@
     "dev:live": "npm run assets:draco && FANATION_COMMENT_SOURCE=instagram node scripts/dev.mjs",
     "instagram:check": "tsx scripts/instagram-check.ts",
     "muse:ingest": "tsx scripts/muse-ingest.ts",
+    "avatar:seed": "tsx scripts/avatar-seed.ts",
+    "ambient:city": "python3 tools/generate_city_ambient.py",
     "growth:preview": "tsx scripts/growth-preview.ts",
     "dev:api": "tsx watch src/infrastructure/http/main.ts",
     "dev:web": "vite",

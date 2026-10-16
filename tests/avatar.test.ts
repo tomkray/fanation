@@ -37,6 +37,55 @@ describe('avatar cache', () => {
     expect(isAllowedImageUrl('http://scontent.cdninstagram.com/v/portrait.jpg')).toBe(false);
   });
 
+  it('serves an operator-seeded portrait into the same cache', () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'fanation-avatar-'));
+    dirs.push(directory);
+    const portraits = new AvatarService({
+      directory,
+      graphBaseUrl: 'https://graph.facebook.com/v23.0',
+      igUserId: null,
+      accessToken: null,
+    });
+    expect(portraits.enabled).toBe(true);
+    expect(portraits.discoveryEnabled).toBe(false);
+    expect(portraits.hasAnyCached()).toBe(false);
+    portraits.seed('michaeljackson', Buffer.from([0xff, 0xd8, 0xff, 0xd9]), 'image/jpeg', 'Michael Jackson');
+    expect(portraits.hasAnyCached()).toBe(true);
+    expect(portraits.read('michaeljackson')?.contentType).toBe('image/jpeg');
+    expect(portraits.verifiedName('michaeljackson')).toBe('Michael Jackson');
+  });
+
+  it('enqueues via public-page lookup when Discovery is off (same pipeline)', async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'fanation-avatar-'));
+    dirs.push(directory);
+    let pageHits = 0;
+    const portraits = new AvatarService({
+      directory,
+      graphBaseUrl: 'https://graph.facebook.com/v23.0',
+      igUserId: null,
+      accessToken: null,
+      warmDelayMs: 0,
+      fetchImpl: async (input) => {
+        const url = String(input);
+        if (url.includes('instagram.com/tomkray')) {
+          pageHits += 1;
+          return new Response(
+            '<meta property="og:image" content="https://scontent.cdninstagram.com/v/portrait.jpg" />',
+            { status: 200, headers: { 'content-type': 'text/html' } }
+          );
+        }
+        return new Response(Uint8Array.from([0xff, 0xd8, 0xff]), {
+          status: 200,
+          headers: { 'content-type': 'image/jpeg' },
+        });
+      },
+    });
+    portraits.enqueue(['tomkray']);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(pageHits).toBe(1);
+    expect(portraits.read('tomkray')?.contentType).toBe('image/jpeg');
+  });
+
   it('stores a small copy and stops when the hourly cap is hit', async () => {
     let lookups = 0;
     const portraits = service(async (input) => {

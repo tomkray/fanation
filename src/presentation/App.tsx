@@ -23,6 +23,7 @@ import { LiveFeed } from './components/LiveFeed.js';
 import { MarketplaceModal } from './components/MarketplaceModal.js';
 import { PropertyCard, PropertyRef } from './components/PropertyCard.js';
 import { formatInteger } from './format.js';
+import { useCityAmbient } from './hooks/useCityAmbient.js';
 import { useWorld } from './hooks/useWorld.js';
 import { IsometricCityEngine, WorldView } from './three/IsometricCityEngine.js';
 
@@ -50,6 +51,7 @@ const REORGANIZED_NOTICE_MS = 4_000;
 
 export const App: React.FC = () => {
   const { config, summary, store, status, error } = useWorld({ live: !MANUAL_FRAMES });
+  useCityAmbient(!CINEMATIC && !MANUAL_FRAMES);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<IsometricCityEngine | null>(null);
   const avatarsRef = useRef(false);
@@ -113,7 +115,7 @@ export const App: React.FC = () => {
       modelBaseUrl: '/assets/models/',
       dracoDecoderUrl: '/draco/',
       preserveDrawingBuffer: CINEMATIC,
-      avatarUrl: (handle) => (avatarsRef.current ? avatarUrl(handle) : null),
+      avatarUrl: (handle) => avatarUrl(handle),
       onSelectProperty: (plotIndex) => setSelection({ kind: 'plot', plotIndex }),
       onVisibleChunks: (keys) => {
         if (!CINEMATIC) {

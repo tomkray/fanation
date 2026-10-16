@@ -303,7 +303,7 @@ export interface PublicConfigDto {
   readonly commentSource: 'instagram' | 'simulated' | 'off';
   readonly pollIntervalSeconds: number;
   readonly momentumWindowSeconds: number;
-  /** Profile pictures are served from /api/v1/avatars/:handle. */
+  /** Profile pictures are served from /api/v1/avatars/:handle (Discovery fetch and/or seeded cache). */
   readonly avatars: boolean;
   readonly paymentRails: Readonly<Record<PaymentMethod, boolean>>;
 }

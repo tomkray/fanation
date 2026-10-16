@@ -4,10 +4,10 @@
  * never stand in for a different account.
  */
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useState } from 'react';
 import { avatarUrl } from '../api/client.js';
 
-/** True when the server serves profile pictures (PublicConfigDto.avatars). */
+/** Kept for layout providers; portraits are always attempted via /api/v1/avatars/:handle. */
 export const AvatarsEnabled = createContext(false);
 
 type AvatarSize = 'sm' | 'md' | 'lg';
@@ -20,9 +20,9 @@ export interface AvatarProps {
 }
 
 export const Avatar: React.FC<AvatarProps> = ({ handle, name, colorHex = '#3ad6ff', size = 'md' }) => {
-  const enabled = useContext(AvatarsEnabled);
   const [attempt, setAttempt] = useState(0);
-  const picture = enabled && attempt < 2 ? avatarUrl(handle) : null;
+  // Always try the cache route — seeded portraits work without Discovery; 404 falls back to the initial.
+  const picture = attempt < 2 ? avatarUrl(handle) : null;
   const src = picture && attempt > 0 ? `${picture}?r=1` : picture;
   const initial = (name ?? handle).replace(/^@/, '').slice(0, 1).toUpperCase();
   return (

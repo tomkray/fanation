@@ -1,14 +1,14 @@
 /**
- * Real Instagram profile pictures and names for the people at the top of the
- * ranking, through the official Business Discovery API (professional
- * accounts only — personal accounts are not exposed by any official API, so
- * those keep the generated avatar).
+ * Real Instagram profile pictures for handles the city already knows.
  *
- * Instagram picture URLs are signed and expire, so images are downloaded once,
- * stored on our disk and served from our own origin.
+ * One pipeline for every comment door (poller, webhook, Muse bridge):
+ * enqueue → refresh → disk cache → GET /api/v1/avatars/:handle.
+ *
+ * Lookup order: Business Discovery when FANATION_DISCOVERY_* is set, otherwise
+ * the public profile og:image (same CDN hosts). No second product path.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { logger } from '../../utils/logger.js';
 
@@ -19,10 +19,9 @@ const MAX_IMAGE_BYTES = 1_500_000;
 const MAX_REDIRECTS = 3;
 const REQUEST_TIMEOUT_MS = 15_000;
 const REFRESH_AFTER_MS = 24 * 3_600_000;
-/** Accounts the API cannot look up (personal, private, renamed) are retried weekly. */
+/** Accounts we cannot resolve are retried weekly. */
 const UNAVAILABLE_RETRY_MS = 7 * 24 * 3_600_000;
 const WARM_DELAY_MS = 1_500;
-/** One lookup at a time. At this pace a busy launch still finishes in hours, not a burst. */
 const MAX_LOOKUPS_PER_HOUR = 400;
 const MAX_QUEUE = 2_000;
 
@@ -43,7 +42,6 @@ export interface AvatarServiceOptions {
   readonly accessToken: string | null;
   readonly fetchImpl?: typeof fetch;
   readonly nowMs?: () => number;
-  /** Test seam. Production uses the hourly cap above. */
   readonly maxLookupsPerHour?: number;
   readonly warmDelayMs?: number;
 }
@@ -80,9 +78,63 @@ export class AvatarService {
     mkdirSync(options.directory, { recursive: true });
   }
 
-  /** Can new pictures be fetched? Cached ones are served either way. */
-  get enabled(): boolean {
+  /** Graph Business Discovery credentials are present (preferred lookup). */
+  get discoveryEnabled(): boolean {
     return Boolean(this.options.accessToken && this.options.igUserId);
+  }
+
+  /**
+   * Fetch pipeline is always on — same enqueue after every mint door.
+   * Discovery when set; public-page interim otherwise.
+   */
+  get enabled(): boolean {
+    return true;
+  }
+
+  /** True when at least one portrait is on disk. */
+  hasAnyCached(): boolean {
+    try {
+      for (const name of readdirSync(this.options.directory)) {
+        if (!name.endsWith('.json')) {
+          continue;
+        }
+        const handle = name.slice(0, -'.json'.length);
+        if (HANDLE_PATTERN.test(handle) && this.read(handle)) {
+          return true;
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Inject bytes into the same cache refresh would write (operator / agent
+   * when lookup cannot reach the CDN). Not a second product path.
+   */
+  seed(handle: string, bytes: Buffer, contentType: string, name?: string): void {
+    if (!HANDLE_PATTERN.test(handle)) {
+      throw new Error(`Invalid handle: ${handle}`);
+    }
+    const type = contentType.split(';')[0].trim().toLowerCase();
+    if (!ALLOWED_IMAGE_TYPES.has(type)) {
+      throw new Error(`Unexpected image type ${type || 'none'}.`);
+    }
+    if (bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) {
+      throw new Error('Image size out of bounds.');
+    }
+    const imagePath = path.join(this.options.directory, `${handle}.img`);
+    writeFileSync(`${imagePath}.tmp`, bytes);
+    renameSync(`${imagePath}.tmp`, imagePath);
+    this.writeMeta({
+      handle,
+      fetchedAtMs: this.now(),
+      available: true,
+      contentType: type,
+      name: name?.slice(0, 60),
+    });
+    logger.info('avatar_seeded', { handle, bytes: bytes.length, contentType: type });
   }
 
   read(handle: string): { readonly bytes: Buffer; readonly contentType: string } | null {
@@ -97,21 +149,16 @@ export class AvatarService {
     return { bytes: readFileSync(imagePath), contentType: meta.contentType };
   }
 
-  /** The account's real name as Instagram reports it, when we have looked it up. */
   verifiedName(handle: string): string | null {
     const meta = HANDLE_PATTERN.test(handle) ? this.readMeta(handle) : null;
     return meta?.available && meta.name ? meta.name : null;
   }
 
   /**
-   * Ask for pictures of @s the city already knows. Missing and stale ones wait
-   * in one queue. The public route must not call this with a stranger's name:
-   * that would turn the endpoint into an open scraper.
+   * Queue pictures for @s the city already knows. Same call site after poller,
+   * webhook and Muse — never a parallel door.
    */
   enqueue(handles: readonly string[]): void {
-    if (!this.enabled) {
-      return;
-    }
     for (const handle of handles) {
       if (!HANDLE_PATTERN.test(handle) || this.queued.has(handle) || !this.isStale(handle)) {
         continue;
@@ -125,13 +172,12 @@ export class AvatarService {
     this.pump();
   }
 
-  /** @deprecated Callers enqueue. Kept so a warm pass is just a priority enqueue. */
   async warm(handles: readonly string[]): Promise<void> {
     this.enqueue(handles);
   }
 
   async refresh(handle: string): Promise<boolean> {
-    if (!this.enabled || !HANDLE_PATTERN.test(handle)) {
+    if (!HANDLE_PATTERN.test(handle)) {
       return false;
     }
     try {
@@ -152,7 +198,11 @@ export class AvatarService {
         name: profile.name,
         followersCount: profile.followersCount,
       });
-      logger.info('avatar_refreshed', { handle, bytes: image.bytes.length });
+      logger.info('avatar_refreshed', {
+        handle,
+        bytes: image.bytes.length,
+        via: this.discoveryEnabled ? 'discovery_or_page' : 'public_page',
+      });
       return true;
     } catch (err) {
       logger.warn('avatar_refresh_failed', { handle, message: err instanceof Error ? err.message : String(err) });
@@ -161,7 +211,7 @@ export class AvatarService {
   }
 
   private pump(): void {
-    if (this.pumping || !this.enabled) {
+    if (this.pumping) {
       return;
     }
     this.pumping = true;
@@ -219,8 +269,17 @@ export class AvatarService {
   }
 
   private async lookup(handle: string): Promise<{ pictureUrl: string; name?: string; followersCount?: number } | null> {
+    if (this.discoveryEnabled) {
+      const viaDiscovery = await this.lookupDiscovery(handle);
+      if (viaDiscovery) {
+        return viaDiscovery;
+      }
+    }
+    return this.lookupPublicPage(handle);
+  }
+
+  private async lookupDiscovery(handle: string): Promise<{ pictureUrl: string; name?: string; followersCount?: number } | null> {
     const url = new URL(`${this.options.graphBaseUrl}/${encodeURIComponent(this.options.igUserId ?? '')}`);
-    // `handle` matched HANDLE_PATTERN, so it cannot break out of the field expression.
     url.searchParams.set('fields', `business_discovery.username(${handle}){username,name,profile_picture_url,followers_count}`);
     url.searchParams.set('access_token', this.options.accessToken ?? '');
     const response = await this.fetchImpl(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
@@ -240,14 +299,45 @@ export class AvatarService {
     };
   }
 
-  /** Follows redirects by hand so every hop stays on Instagram's image CDN. */
+  /** Same cache target as Discovery: Instagram CDN URL from the public profile page. */
+  private async lookupPublicPage(handle: string): Promise<{ pictureUrl: string; name?: string } | null> {
+    const pageUrl = `https://www.instagram.com/${encodeURIComponent(handle)}/`;
+    const response = await this.fetchImpl(pageUrl, {
+      headers: {
+        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      redirect: 'follow',
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const html = await response.text();
+    const og =
+      /property=["']og:image["']\s+content=["']([^"']+)["']/i.exec(html) ??
+      /content=["']([^"']+)["']\s+property=["']og:image["']/i.exec(html);
+    const pictureUrl = og?.[1] ?? null;
+    if (!pictureUrl || !isAllowedImageUrl(pictureUrl)) {
+      return null;
+    }
+    const title = /property=["']og:title["']\s+content=["']([^"']+)["']/i.exec(html)?.[1];
+    const name = title?.replace(/\s*\(@[a-z0-9._]+\)\s*.*$/i, '').trim().slice(0, 60);
+    return { pictureUrl, name: name || undefined };
+  }
+
   private async download(startUrl: string): Promise<{ bytes: Buffer; contentType: string }> {
     let current = startUrl;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
       if (!isAllowedImageUrl(current)) {
         throw new Error('Image URL left the allowed CDN.');
       }
-      const response = await this.fetchImpl(current, { redirect: 'manual', signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+      const response = await this.fetchImpl(current, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        headers: { Referer: 'https://www.instagram.com/' },
+      });
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('location');
         if (!location) {

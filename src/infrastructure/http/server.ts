@@ -151,6 +151,7 @@ export function createFanationServer(config: AppConfig, services: FanationServic
     commentSource: config.commentSource,
     pollIntervalSeconds: config.pollIntervalSeconds,
     momentumWindowSeconds: config.momentumWindowSeconds,
+    // Fetch pipeline is always on (Discovery or public-page interim).
     avatars: avatars.enabled,
     paymentRails: paymentRailsStatus(config),
   };
@@ -352,6 +353,15 @@ export function createFanationServer(config: AppConfig, services: FanationServic
             }
             const events = parseMetaCommentWebhook(parseJson(raw));
             const outcomes = city.ingestComments(events, 'instagram_webhook');
+            const portraits: string[] = [];
+            for (const outcome of outcomes) {
+              if (outcome.status !== 'REJECTED') {
+                portraits.push(outcome.land.minterHandle, outcome.idol.minterHandle, outcome.land.ownerHandle);
+              }
+            }
+            if (portraits.length > 0) {
+              avatars.enqueue(portraits);
+            }
             sendJson(res, 200, { received: events.length, applied: outcomes.length });
             return;
           }
@@ -404,6 +414,7 @@ export function createFanationServer(config: AppConfig, services: FanationServic
             }
             const outcomes = city.ingestComments(parsed.events, 'muse_bridge');
             const tally = { minted: 0, points: 0, rejected: 0 };
+            const portraits: string[] = [];
             for (const outcome of outcomes) {
               if (outcome.status === 'MINTED_NEW_LAND') {
                 tally.minted += 1;
@@ -412,6 +423,13 @@ export function createFanationServer(config: AppConfig, services: FanationServic
               } else {
                 tally.rejected += 1;
               }
+              if (outcome.status !== 'REJECTED') {
+                // Same enqueue as the Instagram poller / webhook — one avatar pipeline.
+                portraits.push(outcome.land.minterHandle, outcome.idol.minterHandle, outcome.land.ownerHandle);
+              }
+            }
+            if (portraits.length > 0) {
+              avatars.enqueue(portraits);
             }
             sendJson(res, 200, {
               mediaId: parsed.mediaId,

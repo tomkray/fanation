@@ -90,9 +90,14 @@ function main(): void {
   const warmAvatars = (): void => {
     void avatars.warm(city.topIdolHandles(AVATAR_WARM_TOP_N));
   };
-  const avatarTimer = avatars.enabled ? setInterval(warmAvatars, AVATAR_WARM_INTERVAL_MS) : null;
-  if (!avatars.enabled) {
-    logger.info('avatars_disabled', { note: 'Set FANATION_DISCOVERY_ACCESS_TOKEN and FANATION_DISCOVERY_IG_USER_ID for real profile pictures.' });
+  // Same warm loop whether Discovery or public-page interim — one pipeline.
+  const avatarTimer = setInterval(warmAvatars, AVATAR_WARM_INTERVAL_MS);
+  if (avatars.discoveryEnabled) {
+    logger.info('avatars_discovery', { note: 'Business Discovery token set; Graph lookup preferred.' });
+  } else {
+    logger.info('avatars_interim', {
+      note: 'No Discovery token; public-page og:image until FANATION_DISCOVERY_* is set. Same enqueue after every mint.',
+    });
   }
 
   const ads = new AdService(config.adsPath, config.sandbox);
@@ -105,9 +110,7 @@ function main(): void {
   server.listen(config.port, config.host, () => {
     logger.info('api_listening', { url: `http://${config.host}:${config.port}`, commentSource: config.commentSource });
     poller?.start();
-    if (avatars.enabled) {
-      warmAvatars();
-    }
+    warmAvatars();
   });
 
   const shutdown = (signal: string) => {
