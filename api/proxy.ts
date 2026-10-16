@@ -1,11 +1,11 @@
 /**
- * Proxies /api/* from the Vercel site to the city process on this Mac (Tailscale Funnel).
- * External rewrites hit DNS_HOSTNAME_EMPTY against *.ts.net; Edge fetch resolves it.
+ * Proxies /api/* from Vercel to the city on this Mac (Cloudflare Tunnel).
+ * Tailscale Funnel hostnames fail DNS from Vercel Edge; trycloudflare.com does not.
  */
 
 export const config = { runtime: 'edge' };
 
-const CITY_ORIGIN = 'https://toms-macbook-pro.tail3998b5.ts.net';
+const CITY_ORIGIN = (typeof process !== 'undefined' && process.env.FANATION_CITY_ORIGIN?.trim()) || 'https://did-cam-diameter-bill.trycloudflare.com';
 
 const HOP_BY_HOP = new Set([
   'connection',
@@ -22,8 +22,21 @@ const HOP_BY_HOP = new Set([
 
 export default async function handler(request: Request): Promise<Response> {
   const incoming = new URL(request.url);
-  const target = new URL(incoming.pathname + incoming.search, CITY_ORIGIN);
-  if (target.origin !== CITY_ORIGIN) {
+  const suffix = incoming.searchParams.get('path') ?? '';
+  if (!suffix || suffix.includes('..')) {
+    return new Response(JSON.stringify({ error: 'Missing path.', code: 'BAD_PATH' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const target = new URL(`/api/${suffix}${incoming.searchParams.get('qs') ? `?${incoming.searchParams.get('qs')}` : ''}`, CITY_ORIGIN);
+  // Preserve original query string when the rewrite did not pack it into qs.
+  if (!incoming.searchParams.get('qs') && [...incoming.searchParams.keys()].some((k) => k !== 'path')) {
+    const forward = new URLSearchParams(incoming.searchParams);
+    forward.delete('path');
+    target.search = forward.toString();
+  }
+  if (target.origin !== new URL(CITY_ORIGIN).origin) {
     return new Response('Bad gateway target.', { status: 502 });
   }
 
@@ -41,7 +54,6 @@ export default async function handler(request: Request): Promise<Response> {
   };
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     init.body = request.body;
-    // Required when forwarding a stream body from Edge.
     (init as RequestInit & { duplex?: string }).duplex = 'half';
   }
 

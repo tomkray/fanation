@@ -1,8 +1,8 @@
-/** Forwards /healthz to the city process (via /api/healthz rewrite). */
+/** Forwards /healthz to the city process. */
 
 export const config = { runtime: 'edge' };
 
-const CITY_ORIGIN = 'https://toms-macbook-pro.tail3998b5.ts.net';
+const CITY_ORIGIN = (typeof process !== 'undefined' && process.env.FANATION_CITY_ORIGIN?.trim()) || 'https://did-cam-diameter-bill.trycloudflare.com';
 
 export default async function handler(): Promise<Response> {
   try {

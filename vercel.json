@@ -3,6 +3,10 @@
     {
       "source": "/healthz",
       "destination": "/api/healthz"
+    },
+    {
+      "source": "/api/v1/:path*",
+      "destination": "/api/proxy?path=v1/:path*"
     }
   ]
 }
