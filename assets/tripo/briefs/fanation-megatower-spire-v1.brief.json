@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "id": "fanation-megatower-spire-v1",
-  "kind": "static-prop",
-  "prompt": "A celebrity supertall: a tapering white tower with violet glass, a ring-shaped sky deck near the top, a needle spire with a star on the tip. Stylized cartoon game asset in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, slightly exaggerated proportions, hand-painted textures, vibrant natural colours, clean readable silhouette from a high three-quarter camera. Single object only on a flat square base no larger than its footprint, no terrain, no people, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
-  "faceLimit": 15000,
-  "seed": 1172,
-  "referenceNotes": "Fanation catalogue (tower \u00b7 MEGATOWER). 16 m lot; ~15 m footprint; ~200 m tall. No world placement is authorized by this brief."
-}

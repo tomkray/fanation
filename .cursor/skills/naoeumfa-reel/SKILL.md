@@ -49,7 +49,7 @@ Day-one spine:
 - One mint per @. Forever.
 - Comment now, on @naoeumfa.
 
-Output: `renders/fanation_day_one.mp4` and `renders/day-one-caption.txt`. Open the mp4.
+Output: `renders/naoeumfa_day_one.mp4` and `renders/day-one-caption.txt`. Open the mp4.
 
 ## Check
 

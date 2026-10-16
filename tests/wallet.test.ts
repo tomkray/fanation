@@ -18,7 +18,7 @@ function commentBy(author: string, text: string, id: string): InstagramCommentEv
 }
 
 function tempFile(name: string): string {
-  return path.join(mkdtempSync(path.join(tmpdir(), 'fanation-wallet-')), name);
+  return path.join(mkdtempSync(path.join(tmpdir(), 'naoeumfa-wallet-')), name);
 }
 
 describe('connect with an Instagram comment', () => {

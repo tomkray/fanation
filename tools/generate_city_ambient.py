@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fanation city ambient — ElevenLabs Music → seamless site loop.
+Não É Um Fã city ambient — ElevenLabs Music → seamless site loop.
 
   agent/.venv/bin/python tools/generate_city_ambient.py
 
@@ -106,7 +106,7 @@ def fade_loop(src: Path, dest: Path) -> None:
 
 def main() -> int:
     key = load_key()
-    with tempfile.TemporaryDirectory(prefix="fanation-ambient-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="naoeumfa-ambient-") as tmp:
         raw = Path(tmp) / "raw.mp3"
         print(f"composing {LENGTH_MS // 1000}s city ambient via ElevenLabs Music…")
         compose(key, raw)

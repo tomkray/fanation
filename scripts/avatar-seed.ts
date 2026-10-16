@@ -63,10 +63,10 @@ async function main(): Promise<number> {
     return 1;
   }
   const portraits = new AvatarService({
-    directory: path.resolve(process.env.FANATION_AVATAR_DIR ?? 'data/avatars'),
-    graphBaseUrl: process.env.FANATION_DISCOVERY_BASE_URL ?? 'https://graph.facebook.com/v23.0',
-    igUserId: process.env.FANATION_DISCOVERY_IG_USER_ID?.trim() || null,
-    accessToken: process.env.FANATION_DISCOVERY_ACCESS_TOKEN?.trim() || null,
+    directory: path.resolve(process.env.NAOEUMFA_AVATAR_DIR ?? 'data/avatars'),
+    graphBaseUrl: process.env.NAOEUMFA_DISCOVERY_BASE_URL ?? 'https://graph.facebook.com/v23.0',
+    igUserId: process.env.NAOEUMFA_DISCOVERY_IG_USER_ID?.trim() || null,
+    accessToken: process.env.NAOEUMFA_DISCOVERY_ACCESS_TOKEN?.trim() || null,
     warmDelayMs: 0,
   });
 

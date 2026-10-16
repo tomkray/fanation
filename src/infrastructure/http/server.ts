@@ -17,9 +17,9 @@
  *   POST /api/v1/dev/simulate-payment demo only: signs a PSP callback for the active checkout
  *   GET  /api/v1/ads                  live ads (zeppelins, billboards, sky banners) + rate card
  *   POST /api/v1/ads/requests         a partner books a placement → quote, pending review
- *   GET  /api/v1/admin/ads            admin: every campaign (Bearer FANATION_ADMIN_TOKEN)
+ *   GET  /api/v1/admin/ads            admin: every campaign (Bearer NAOEUMFA_ADMIN_TOKEN)
  *   POST /api/v1/admin/ads/:id/approve|reject  admin: review a campaign
- *   POST /api/v1/bridge/muse          local Muse dump (Bearer FANATION_BRIDGE_SECRET)
+ *   POST /api/v1/bridge/muse          local Muse dump (Bearer NAOEUMFA_BRIDGE_SECRET)
  *   GET  /*                           built frontend from `dist/` when present
  */
 
@@ -98,7 +98,7 @@ export interface NaoeumfaServices {
 export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServices): Server {
   const { city, avatars, ads, auth, offers } = services;
   const wallet: WalletContext = { config, city, auth, offers };
-  /** Constant-time check of `Authorization: Bearer <FANATION_ADMIN_TOKEN>`; hashing equalises lengths. */
+  /** Constant-time check of `Authorization: Bearer <NAOEUMFA_ADMIN_TOKEN>`; hashing equalises lengths. */
   function requireAdmin(req: IncomingMessage): void {
     if (!config.adminToken) {
       throw new HttpError(404, 'NOT_FOUND', 'Route not found.');
@@ -401,7 +401,7 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
 
           case 'POST /api/v1/payments/webhook': {
             const raw = await readRawBody(req, JSON_BODY_LIMIT);
-            const result = handlePaymentCallback(raw, header(req, 'x-fanation-signature'));
+            const result = handlePaymentCallback(raw, header(req, 'x-naoeumfa-signature'));
             sendJson(res, result.status, result.body);
             return;
           }

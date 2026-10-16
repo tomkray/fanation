@@ -31,7 +31,7 @@ No Instagram token yet. One-time setup:
   3. Under "Generate access tokens", add @${OFFICIAL_INSTAGRAM_HANDLE} and accept
      instagram_business_basic and instagram_business_manage_comments.
   4. Paste the token into the .env file in this folder:
-       FANATION_IG_ACCESS_TOKEN=paste_here
+       NAOEUMFA_IG_ACCESS_TOKEN=paste_here
      (never paste the token in a chat or anywhere but .env)
   5. Run again: npm run instagram:check
 `);
@@ -41,14 +41,14 @@ async function main(): Promise<number> {
   if (existsSync('.env')) {
     process.loadEnvFile('.env');
   }
-  const token = process.env.FANATION_IG_ACCESS_TOKEN?.trim();
+  const token = process.env.NAOEUMFA_IG_ACCESS_TOKEN?.trim();
   if (!token) {
     howToGetToken();
     return 1;
   }
-  const base = process.env.FANATION_GRAPH_BASE_URL?.trim() || DEFAULT_GRAPH_BASE_URL;
-  const transport = process.env.FANATION_GRAPH_TOKEN_TRANSPORT === 'header' ? 'header' : 'query';
-  const userId = process.env.FANATION_IG_USER_ID?.trim() || 'me';
+  const base = process.env.NAOEUMFA_GRAPH_BASE_URL?.trim() || DEFAULT_GRAPH_BASE_URL;
+  const transport = process.env.NAOEUMFA_GRAPH_TOKEN_TRANSPORT === 'header' ? 'header' : 'query';
+  const userId = process.env.NAOEUMFA_IG_USER_ID?.trim() || 'me';
 
   const meUrl = new URL(`${base}/${encodeURIComponent(userId)}`);
   meUrl.searchParams.set('fields', 'id,username');
@@ -73,7 +73,7 @@ async function main(): Promise<number> {
     graphBaseUrl: base,
     igUserId: userId,
     accessToken: token,
-    mediaLimit: Number.parseInt(process.env.FANATION_POLL_MEDIA_LIMIT ?? '10', 10) || 10,
+    mediaLimit: Number.parseInt(process.env.NAOEUMFA_POLL_MEDIA_LIMIT ?? '10', 10) || 10,
     tokenTransport: transport,
   });
   const events = (await source.fetchComments()).sort((a, b) => a.receivedAtMs - b.receivedAtMs);

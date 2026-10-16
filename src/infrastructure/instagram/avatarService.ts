@@ -4,7 +4,7 @@
  * One pipeline for every comment door (poller, webhook, Muse bridge):
  * enqueue → refresh → disk cache → GET /api/v1/avatars/:handle.
  *
- * Lookup order: Business Discovery when FANATION_DISCOVERY_* is set, otherwise
+ * Lookup order: Business Discovery when NAOEUMFA_DISCOVERY_* is set, otherwise
  * the public profile og:image (same CDN hosts). No second product path.
  */
 

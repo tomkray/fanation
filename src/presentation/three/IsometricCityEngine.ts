@@ -1,5 +1,5 @@
 /**
- * Fanation world renderer.
+ * Não É Um Fã world renderer.
  *
  * City view — a neon night city of 3×3-lot blocks and streets. Every
  * property's building comes from its class (fans) and its finish from the
@@ -427,7 +427,7 @@ export class IsometricCityEngine {
     this.links.raycast = () => undefined;
     this.world.add(this.links);
 
-    // Floating golden-spiral hologram over the Capital: the Fanation mark in light.
+    // Floating golden-spiral hologram over the Capital: the naoeumfa mark in light.
     const dots = 89;
     this.hologram = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.9, 1), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }), dots);
     const m = new THREE.Matrix4();

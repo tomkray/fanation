@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "id": "fanation-car-compact-v1",
-  "kind": "static-prop",
-  "prompt": "A cute compact city car with rounded body, big wheels, glossy paint and a little roof rack. Stylized cartoon game prop in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, hand-painted textures, vibrant natural colours, readable from a high three-quarter camera. Single object only, no ground, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
-  "faceLimit": 3000,
-  "seed": 1211,
-  "referenceNotes": "Fanation catalogue (prop \u00b7 CAR). No world placement is authorized by this brief."
-}

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "dev:live": "npm run assets:draco && FANATION_COMMENT_SOURCE=instagram node scripts/dev.mjs",
+    "dev:live": "npm run assets:draco && NAOEUMFA_COMMENT_SOURCE=instagram node scripts/dev.mjs",
     "instagram:check": "tsx scripts/instagram-check.ts",
     "muse:ingest": "tsx scripts/muse-ingest.ts",
     "avatar:seed": "tsx scripts/avatar-seed.ts",

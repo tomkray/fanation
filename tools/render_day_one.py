@@ -2,7 +2,7 @@
 Day-one launch reel.
 
 Footage is the live city, cut like a film: wide planet, push into a district,
-then down among the houses. Voice is the Fanation character on ElevenLabs
+then down among the houses. Voice is the Não É Um Fã character on ElevenLabs
 (Chris, American). The key is read from .env and never printed.
 
 Re-run: agent/.venv/bin/python tools/render_day_one.py
@@ -83,7 +83,7 @@ LINES = [
         "cta": "💜  One mint",
     },
     {
-        "say": "Comment now. On fanation club.",
+        "say": "Comment now. On naoeumfa.",
         "shot": "cta",
         "eyebrow": "GO",
         "headline": "Comment now.",
@@ -103,7 +103,7 @@ Plus your $NEFA pack. You earned it. ⚡
 One mint per @. Forever.
 Comment now. @naoeumfa
 
-#FanationClub #DayOne #Fandom
+#NaoeUmFa #DayOne #Fandom
 """
 
 
@@ -398,10 +398,10 @@ def main() -> None:
     sfx = build_sfx(work, key, [start for start, _, _ in timeline])
     frames = work / "frames"
     asyncio.run(capture(frames, seconds, timeline, shots_for(timeline)))
-    video = OUT / "fanation_day_one.mp4"
+    video = OUT / "naoeumfa_day_one.mp4"
     mux(frames, voice, music, sfx, video)
     (OUT / "day-one-caption.txt").write_text(CAPTION, encoding="utf-8")
-    (OUT / "fanation_day_one.json").write_text(
+    (OUT / "naoeumfa_day_one.json").write_text(
         json.dumps(
             {"video": video.name, "seconds": round(seconds, 2), "voice": "Chris", "model": MODEL, "caption": CAPTION.strip()},
             indent=2,

@@ -53,7 +53,7 @@ export interface AdCampaign extends AdRequest {
   readonly createdAtIso: string;
   /** Set on approval: the campaign flies from then for `days` days. */
   readonly startsAtIso: string | null;
-  /** Fanation's own "advertise here" inventory, shown when a slot is unsold. */
+  /** Não É Um Fã's own "advertise here" inventory, shown when a slot is unsold. */
   readonly house: boolean;
 }
 

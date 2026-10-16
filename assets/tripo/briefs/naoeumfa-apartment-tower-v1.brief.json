@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "naoeumfa-apartment-tower-v1",
+  "kind": "static-prop",
+  "prompt": "A friendly eight-storey apartment tower: rounded corners, pastel coral facade with white balcony rails, rows of warm windows, a rooftop garden with tiny trees, a lobby with a striped awning. Stylized cartoon game asset in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, slightly exaggerated proportions, hand-painted textures, vibrant natural colours, clean readable silhouette from a high three-quarter camera. Single object only on a flat square base no larger than its footprint, no terrain, no people, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
+  "faceLimit": 10000,
+  "seed": 1103,
+  "referenceNotes": "Não É Um Fã catalogue (tower \u00b7 TOWER). 16 m lot; ~13 m footprint; ~40 m tall. No world placement is authorized by this brief."
+}

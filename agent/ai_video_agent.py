@@ -46,7 +46,7 @@ def load_dotenv(path: Path = Path(".env")) -> None:
 
 load_dotenv()
 
-GRAPH_BASE = os.environ.get("FANATION_GRAPH_BASE_URL") or "https://graph.instagram.com/v23.0"
+GRAPH_BASE = os.environ.get("NAOEUMFA_GRAPH_BASE_URL") or "https://graph.instagram.com/v23.0"
 TIKTOK_INIT_URL = "https://open.tiktokapis.com/v2/post/publish/video/init/"
 HANDLE_SANITIZE_RE = re.compile(r"[^a-z0-9._]")
 REQUEST_TIMEOUT = httpx.Timeout(30.0, read=120.0)
@@ -56,7 +56,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "service": "fanation-media-agent",
+            "service": "naoeumfa-media-agent",
             "level": record.levelname,
             "event": record.getMessage(),
         }
@@ -66,7 +66,7 @@ class JsonFormatter(logging.Formatter):
 
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
-logger = logging.getLogger("fanation_media_agent")
+logger = logging.getLogger("naoeumfa_media_agent")
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
@@ -144,11 +144,11 @@ def compose_caption(snapshot: CitySnapshot) -> str:
         else ""
     )
     return (
-        f"🏙️ Fanation already has {snapshot.total_homes} homes built by fans.\n\n"
+        f"🏙️ Não É Um Fã already has {snapshot.total_homes} homes built by fans.\n\n"
         f"{rivalry}{climb}\n\n"
         "👇 Comment your idol's @ to move in next to them + your $NEFA pack (packs halve as the planet grows).\n"
         "Anyone can be an idol: get fans and your home grows into a tower.\n\n"
-        "#FanationClub #FandomRanking #Fandom #fanation"
+        "#NaoeUmFa #Naoeumfa #FandomRanking #Fandom"
     )
 
 
@@ -162,7 +162,7 @@ async def render_take(frontend_url: str, snapshot: CitySnapshot, out_dir: Path, 
     slug = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     frames_dir = out_dir / f"frames_{slug}"
     frames_dir.mkdir()
-    mp4_path = out_dir / f"fanation_take_{slug}.mp4"
+    mp4_path = out_dir / f"naoeumfa_take_{slug}.mp4"
     focus = f"&focus={snapshot.leader_handle}" if snapshot.leader_handle else ""
     url = f"{frontend_url.rstrip('/')}/?cinematic=1&capture=1{focus}"
     total_frames = max(1, int(seconds * fps))
@@ -170,7 +170,7 @@ async def render_take(frontend_url: str, snapshot: CitySnapshot, out_dir: Path, 
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(
-                channel=os.environ.get("FANATION_AGENT_BROWSER_CHANNEL", "chrome"),
+                channel=os.environ.get("NAOEUMFA_AGENT_BROWSER_CHANNEL", "chrome"),
                 headless=True,
                 args=["--ignore-gpu-blocklist", "--enable-webgl"],
             )
@@ -286,12 +286,12 @@ def publish_tiktok(video: Path, caption: str, token: str) -> str:
 
 def publish(video: Path, caption: str, dry_run: bool) -> dict[str, Optional[str]]:
     receipt: dict[str, Optional[str]] = {"instagram_media_id": None, "tiktok_publish_id": None}
-    ig_token = os.environ.get("FANATION_IG_ACCESS_TOKEN")
-    ig_user = os.environ.get("FANATION_IG_USER_ID") or "me"
+    ig_token = os.environ.get("NAOEUMFA_IG_ACCESS_TOKEN")
+    ig_user = os.environ.get("NAOEUMFA_IG_USER_ID") or "me"
     tt_token = os.environ.get("TIKTOK_ACCESS_TOKEN")
 
     if dry_run or not ig_token:
-        log("instagram_skipped", reason="dry-run" if dry_run else "FANATION_IG_ACCESS_TOKEN not set")
+        log("instagram_skipped", reason="dry-run" if dry_run else "NAOEUMFA_IG_ACCESS_TOKEN not set")
     else:
         try:
             receipt["instagram_media_id"] = publish_instagram_reel(video, caption, ig_token, ig_user)
@@ -333,9 +333,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true", help="render but never publish")
     parser.add_argument("--seconds", type=float, default=8.0)
     parser.add_argument("--fps", type=int, default=30)
-    parser.add_argument("--api-url", default=os.environ.get("FANATION_API_URL", "http://127.0.0.1:8787"))
-    parser.add_argument("--frontend-url", default=os.environ.get("FANATION_FRONTEND_URL", "http://127.0.0.1:5173"))
-    parser.add_argument("--render-dir", default=os.environ.get("FANATION_RENDER_DIR", "renders"))
+    parser.add_argument("--api-url", default=os.environ.get("NAOEUMFA_API_URL", "http://127.0.0.1:8787"))
+    parser.add_argument("--frontend-url", default=os.environ.get("NAOEUMFA_FRONTEND_URL", "http://127.0.0.1:5173"))
+    parser.add_argument("--render-dir", default=os.environ.get("NAOEUMFA_RENDER_DIR", "renders"))
     return parser.parse_args()
 
 

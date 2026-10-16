@@ -22,6 +22,5 @@ function markSvg(size) {
 const outDir = path.resolve('public/brand');
 mkdirSync(outDir, { recursive: true });
 writeFileSync(path.join(outDir, 'naoeumfa-mark.svg'), markSvg(512));
-writeFileSync(path.join(outDir, 'fanation-mark.svg'), markSvg(512));
 writeFileSync(path.resolve('public/favicon.svg'), markSvg(64));
-console.log('brand: avatar mark, legacy alias and favicon generated');
+console.log('brand: naoeumfa-mark.svg + favicon.svg');

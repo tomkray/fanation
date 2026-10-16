@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "id": "fanation-tree-pine-v1",
-  "kind": "static-prop",
-  "prompt": "A cartoon pine tree with three stacked soft green cones and a short trunk. Stylized cartoon game prop in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, hand-painted textures, vibrant natural colours, readable from a high three-quarter camera. Single object only, no ground, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
-  "faceLimit": 2500,
-  "seed": 1202,
-  "referenceNotes": "Fanation catalogue (prop \u00b7 TREE). No world placement is authorized by this brief."
-}

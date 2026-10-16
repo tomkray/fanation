@@ -12,8 +12,8 @@ description: >-
 # Não É Um Fã — city ops
 
 **Brand (locked):** Não É Um Fã · `naoeumfa.com` · Instagram `@naoeumfa` · token `$NEFA`.
-UI copy is **pt-BR** (leve, memético, organizado). Legacy repo/env prefix
-`FANATION_*` may remain for ops — never print secrets.
+UI copy is **pt-BR** (leve, memético, organizado). Env prefix `NAOEUMFA_*`
+(legacy `FANATION_*` still read for one release). Never print secrets.
 
 **One tube.** Muse and Meta are only different doors into the same
 `ingestComments` → ledger → `avatars.enqueue` + `refresh` path. Never invent a
@@ -26,7 +26,7 @@ comment (Muse JSON | Graph poll | webhook)
   → city.ingestComments
   → avatars.enqueue(fan, idol, owner)   // always
   → AvatarService.refresh (Muse bridge awaits before answer)
-       → Business Discovery if FANATION_DISCOVERY_* set
+       → Business Discovery if NAOEUMFA_DISCOVERY_* set
        → else public profile og:image (same CDN cache)
   → GET /api/v1/avatars/:handle
 ```
@@ -53,14 +53,14 @@ comentários*, *atualiza a cidade*, or a new Instagram permalink.
 
 | Door | How | Same after the door? |
 | --- | --- | --- |
-| Muse (until IG token) | `npm run muse:ingest -- batch.json` + `FANATION_BRIDGE_SECRET` | yes |
-| Graph poller | `FANATION_IG_*` + `FANATION_COMMENT_SOURCE=instagram` + `FANATION_LIVE_FROM` | yes |
+| Muse (until IG token) | `npm run muse:ingest -- batch.json` + `NAOEUMFA_BRIDGE_SECRET` | yes |
+| Graph poller | `NAOEUMFA_IG_*` + `NAOEUMFA_COMMENT_SOURCE=instagram` + `NAOEUMFA_LIVE_FROM` | yes |
 | Webhook | Meta signature + same ingest | yes |
 
 ## Day-one / live checklist
 
-1. API: `HOST=127.0.0.1 PORT=8787`, `FANATION_DEMO=0`, journal `data/ledger.jsonl`.
-2. Official handle: `@naoeumfa` (`FANATION_IG_USERNAME` / `OFFICIAL_INSTAGRAM_HANDLE`).
+1. API: `HOST=127.0.0.1 PORT=8787`, `NAOEUMFA_DEMO=0`, journal `data/ledger.jsonl`.
+2. Official handle: `@naoeumfa` (`NAOEUMFA_IG_USERNAME` / `OFFICIAL_INSTAGRAM_HANDLE`).
 3. Public: Vercel → Cloudflare tunnel → this Mac.
 4. Bridge secret in `.env` (24+). Never paste in chat.
 5. A1: one mint per `@`. Connect codes are `NEFA-XXXXXX`. Client header `X-Naoeumfa-Client`.

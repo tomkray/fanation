@@ -49,7 +49,7 @@ function main(): void {
   if (config.commentSource === 'instagram' && city.journalSources.has('simulated')) {
     throw new Error(
       `Journal ${config.journalPath} contains simulated fans. The real city needs its own book: ` +
-        'set FANATION_JOURNAL_PATH to a new file (default data/ledger.jsonl).'
+        'set NAOEUMFA_JOURNAL_PATH to a new file (default data/ledger.jsonl).'
     );
   }
 
@@ -96,7 +96,7 @@ function main(): void {
     logger.info('avatars_discovery', { note: 'Business Discovery token set; Graph lookup preferred.' });
   } else {
     logger.info('avatars_interim', {
-      note: 'No Discovery token; public-page og:image until FANATION_DISCOVERY_* is set. Same enqueue after every mint.',
+      note: 'No Discovery token; public-page og:image until NAOEUMFA_DISCOVERY_* is set. Same enqueue after every mint.',
     });
   }
 

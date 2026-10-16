@@ -3,7 +3,7 @@
  *
  *   npm run muse:ingest -- path/to/batch.json
  *
- * The running API must have FANATION_BRIDGE_SECRET set. The same dump twice
+ * The running API must have NAOEUMFA_BRIDGE_SECRET set. The same dump twice
  * does not mint twice: missing Meta ids become a stable hash.
  */
 
@@ -19,9 +19,9 @@ async function main(): Promise<number> {
     console.error('Usage: npm run muse:ingest -- path/to/batch.json');
     return 1;
   }
-  const secret = process.env.FANATION_BRIDGE_SECRET?.trim();
+  const secret = process.env.NAOEUMFA_BRIDGE_SECRET?.trim();
   if (!secret || secret.length < 24) {
-    console.error('FANATION_BRIDGE_SECRET missing or shorter than 24 characters in .env');
+    console.error('NAOEUMFA_BRIDGE_SECRET missing or shorter than 24 characters in .env');
     return 1;
   }
   const path = resolve(file);
@@ -31,7 +31,7 @@ async function main(): Promise<number> {
   }
   const body = readFileSync(path, 'utf-8');
   JSON.parse(body);
-  const apiUrl = (process.env.FANATION_API_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '');
+  const apiUrl = (process.env.NAOEUMFA_API_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '');
   const response = await fetch(`${apiUrl}/api/v1/bridge/muse`, {
     method: 'POST',
     headers: {

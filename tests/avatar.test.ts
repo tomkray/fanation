@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 function service(fetchImpl: typeof fetch, maxLookupsPerHour = 2): AvatarService {
-  const directory = mkdtempSync(path.join(tmpdir(), 'fanation-avatar-'));
+  const directory = mkdtempSync(path.join(tmpdir(), 'naoeumfa-avatar-'));
   dirs.push(directory);
   return new AvatarService({
     directory,
@@ -38,7 +38,7 @@ describe('avatar cache', () => {
   });
 
   it('serves an operator-seeded portrait into the same cache', () => {
-    const directory = mkdtempSync(path.join(tmpdir(), 'fanation-avatar-'));
+    const directory = mkdtempSync(path.join(tmpdir(), 'naoeumfa-avatar-'));
     dirs.push(directory);
     const portraits = new AvatarService({
       directory,
@@ -56,7 +56,7 @@ describe('avatar cache', () => {
   });
 
   it('enqueues via public-page lookup when Discovery is off (same pipeline)', async () => {
-    const directory = mkdtempSync(path.join(tmpdir(), 'fanation-avatar-'));
+    const directory = mkdtempSync(path.join(tmpdir(), 'naoeumfa-avatar-'));
     dirs.push(directory);
     let pageHits = 0;
     const portraits = new AvatarService({

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "naoeumfa-music-hall-v1",
+  "kind": "static-prop",
+  "prompt": "A landmark music hall: a building shaped like a giant stack of colourful vinyl records and a grand piano wing roof, neon-free warm lights, a red carpet entrance. Stylized cartoon game asset in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, slightly exaggerated proportions, hand-painted textures, vibrant natural colours, clean readable silhouette from a high three-quarter camera. Single object only on a flat square base no larger than its footprint, no terrain, no people, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
+  "faceLimit": 15000,
+  "seed": 1181,
+  "referenceNotes": "Não É Um Fã catalogue (landmark \u00b7 MUSIC). 48 m block. No world placement is authorized by this brief."
+}

@@ -1,6 +1,6 @@
 /**
  * Ad inventory: partner requests waiting for review, approved campaigns, and
- * Fanation's own "advertise here" creatives that fill unsold slots. Stored as
+ * Não É Um Fã's own "advertise here" creatives that fill unsold slots. Stored as
  * one JSON file written atomically (write + rename), so a crash never leaves
  * half a file. No money moves here yet: a request carries a quote; payment is
  * taken after review through the regular payment rails.

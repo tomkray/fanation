@@ -327,7 +327,7 @@ export interface AdDto {
   readonly partnerHandle: string;
   readonly backgroundHex: string;
   readonly accentHex: string;
-  /** Fanation's own "advertise here" inventory. */
+  /** Não É Um Fã's own "advertise here" inventory. */
   readonly house: boolean;
 }
 

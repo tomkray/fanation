@@ -9,7 +9,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const DEV_SECRETS_PATH = 'data/.dev-secrets.json';
-const SECRET_NAMES = ['FANATION_META_APP_SECRET', 'FANATION_META_VERIFY_TOKEN', 'FANATION_PAYMENT_WEBHOOK_SECRET'];
+const SECRET_NAMES = ['NAOEUMFA_META_APP_SECRET', 'NAOEUMFA_META_VERIFY_TOKEN', 'NAOEUMFA_PAYMENT_WEBHOOK_SECRET'];
 
 function loadDevSecrets() {
   if (existsSync(DEV_SECRETS_PATH)) {
@@ -25,8 +25,8 @@ if (existsSync('.env')) {
   process.loadEnvFile('.env');
 }
 // The toy turns the demo book on. A live Instagram collector must not.
-const liveInstagram = process.env.FANATION_COMMENT_SOURCE === 'instagram';
-const env = { ...process.env, FANATION_DEMO: process.env.FANATION_DEMO ?? (liveInstagram ? '0' : '1') };
+const liveInstagram = process.env.NAOEUMFA_COMMENT_SOURCE === 'instagram';
+const env = { ...process.env, NAOEUMFA_DEMO: process.env.NAOEUMFA_DEMO ?? (liveInstagram ? '0' : '1') };
 for (const [name, value] of Object.entries(loadDevSecrets())) {
   env[name] ??= value;
 }

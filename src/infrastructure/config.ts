@@ -76,7 +76,15 @@ export const DEMO_PIX_EVP_KEY = '00000000-0000-0000-0000-000000000000';
 
 function readEnv(env: NodeJS.ProcessEnv, name: string): string | null {
   const value = env[name]?.trim();
-  return value ? value : null;
+  if (value) {
+    return value;
+  }
+  // One-release bridge: old FANATION_* keys still resolve while ops migrate.
+  if (name.startsWith('NAOEUMFA_')) {
+    const legacy = env[`FANATION_${name.slice('NAOEUMFA_'.length)}`]?.trim();
+    return legacy ? legacy : null;
+  }
+  return null;
 }
 
 function requireSecret(env: NodeJS.ProcessEnv, name: string, demo: boolean, minLength = 16): string {
@@ -105,18 +113,18 @@ function readInt(env: NodeJS.ProcessEnv, name: string, fallback: number, min: nu
 
 /** Too short a token is refused rather than silently weak: admin routes approve paid content. */
 function readAdminToken(env: NodeJS.ProcessEnv): string | null {
-  const value = readEnv(env, 'FANATION_ADMIN_TOKEN');
+  const value = readEnv(env, 'NAOEUMFA_ADMIN_TOKEN');
   if (value !== null && value.length < 24) {
-    throw new Error('FANATION_ADMIN_TOKEN must be at least 24 characters (or unset to disable admin routes).');
+    throw new Error('NAOEUMFA_ADMIN_TOKEN must be at least 24 characters (or unset to disable admin routes).');
   }
   return value;
 }
 
 /** Optional local door for Muse comment dumps. Off when unset. */
 function readBridgeSecret(env: NodeJS.ProcessEnv): string | null {
-  const value = readEnv(env, 'FANATION_BRIDGE_SECRET');
+  const value = readEnv(env, 'NAOEUMFA_BRIDGE_SECRET');
   if (value !== null && value.length < 24) {
-    throw new Error('FANATION_BRIDGE_SECRET must be at least 24 characters (or unset to disable the Muse bridge).');
+    throw new Error('NAOEUMFA_BRIDGE_SECRET must be at least 24 characters (or unset to disable the Muse bridge).');
   }
   return value;
 }
@@ -135,43 +143,43 @@ function readCryptoRail(env: NodeJS.ProcessEnv, prefix: string): CryptoRail | un
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const demo = env.FANATION_DEMO === '1';
-  const igAccessToken = readEnv(env, 'FANATION_IG_ACCESS_TOKEN');
+  const demo = (env.NAOEUMFA_DEMO ?? env.FANATION_DEMO) === '1';
+  const igAccessToken = readEnv(env, 'NAOEUMFA_IG_ACCESS_TOKEN');
   // `me` resolves to the token's own account, so a token alone is enough.
-  const igUserId = readEnv(env, 'FANATION_IG_USER_ID') ?? (igAccessToken ? 'me' : null);
-  const transport = readEnv(env, 'FANATION_GRAPH_TOKEN_TRANSPORT') ?? 'query';
+  const igUserId = readEnv(env, 'NAOEUMFA_IG_USER_ID') ?? (igAccessToken ? 'me' : null);
+  const transport = readEnv(env, 'NAOEUMFA_GRAPH_TOKEN_TRANSPORT') ?? 'query';
   if (transport !== 'query' && transport !== 'header') {
-    throw new Error(`FANATION_GRAPH_TOKEN_TRANSPORT must be query | header, got "${transport}".`);
+    throw new Error(`NAOEUMFA_GRAPH_TOKEN_TRANSPORT must be query | header, got "${transport}".`);
   }
 
-  const requestedSource = readEnv(env, 'FANATION_COMMENT_SOURCE');
+  const requestedSource = readEnv(env, 'NAOEUMFA_COMMENT_SOURCE');
   let commentSource: CommentSourceMode;
   if (requestedSource === 'instagram' || requestedSource === 'simulated' || requestedSource === 'off') {
     commentSource = requestedSource;
   } else if (requestedSource !== null) {
-    throw new Error(`FANATION_COMMENT_SOURCE must be instagram | simulated | off, got "${requestedSource}".`);
+    throw new Error(`NAOEUMFA_COMMENT_SOURCE must be instagram | simulated | off, got "${requestedSource}".`);
   } else if (igAccessToken && igUserId) {
     commentSource = 'instagram';
   } else {
     commentSource = demo ? 'simulated' : 'off';
   }
   if (commentSource === 'instagram' && (!igAccessToken || !igUserId)) {
-    throw new Error('FANATION_COMMENT_SOURCE=instagram needs FANATION_IG_ACCESS_TOKEN and FANATION_IG_USER_ID.');
+    throw new Error('NAOEUMFA_COMMENT_SOURCE=instagram needs NAOEUMFA_IG_ACCESS_TOKEN and NAOEUMFA_IG_USER_ID.');
   }
   if (commentSource === 'simulated' && !demo) {
-    throw new Error('The simulated comment source is only allowed with FANATION_DEMO=1.');
+    throw new Error('The simulated comment source is only allowed with NAOEUMFA_DEMO=1.');
   }
 
-  const pixKey = readEnv(env, 'FANATION_PIX_KEY');
-  const liveFromRaw = readEnv(env, 'FANATION_LIVE_FROM');
+  const pixKey = readEnv(env, 'NAOEUMFA_PIX_KEY');
+  const liveFromRaw = readEnv(env, 'NAOEUMFA_LIVE_FROM');
   const liveFromMs = liveFromRaw === null ? null : Date.parse(liveFromRaw);
   if (liveFromRaw !== null && !Number.isFinite(liveFromMs)) {
-    throw new Error('FANATION_LIVE_FROM must be an ISO-8601 instant.');
+    throw new Error('NAOEUMFA_LIVE_FROM must be an ISO-8601 instant.');
   }
   if (commentSource === 'instagram' && liveFromMs === null) {
-    throw new Error('FANATION_LIVE_FROM is required when reading Instagram. Set it to the minute the planet opens, so older comments do not mint the first homes.');
+    throw new Error('NAOEUMFA_LIVE_FROM is required when reading Instagram. Set it to the minute the planet opens, so older comments do not mint the first homes.');
   }
-  const officialUsername = readEnv(env, 'FANATION_IG_USERNAME') ?? OFFICIAL_INSTAGRAM_HANDLE;
+  const officialUsername = readEnv(env, 'NAOEUMFA_IG_USERNAME') ?? OFFICIAL_INSTAGRAM_HANDLE;
   // Simulated fans live in their own book, so the real city starts at plot #0.
   const defaultJournal = commentSource === 'simulated' ? 'data/ledger.demo.jsonl' : 'data/ledger.jsonl';
 
@@ -180,18 +188,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sandbox: demo && commentSource === 'simulated',
     host: readEnv(env, 'HOST') ?? '127.0.0.1',
     port: readInt(env, 'PORT', 8787, 1, 65_535),
-    journalPath: path.resolve(readEnv(env, 'FANATION_JOURNAL_PATH') ?? defaultJournal),
-    staticDir: path.resolve(readEnv(env, 'FANATION_STATIC_DIR') ?? 'dist'),
+    journalPath: path.resolve(readEnv(env, 'NAOEUMFA_JOURNAL_PATH') ?? defaultJournal),
+    staticDir: path.resolve(readEnv(env, 'NAOEUMFA_STATIC_DIR') ?? 'dist'),
     avatars: {
-      directory: path.resolve(readEnv(env, 'FANATION_AVATAR_DIR') ?? 'data/avatars'),
-      graphBaseUrl: readEnv(env, 'FANATION_DISCOVERY_BASE_URL') ?? 'https://graph.facebook.com/v23.0',
-      igUserId: readEnv(env, 'FANATION_DISCOVERY_IG_USER_ID'),
-      accessToken: readEnv(env, 'FANATION_DISCOVERY_ACCESS_TOKEN'),
+      directory: path.resolve(readEnv(env, 'NAOEUMFA_AVATAR_DIR') ?? 'data/avatars'),
+      graphBaseUrl: readEnv(env, 'NAOEUMFA_DISCOVERY_BASE_URL') ?? 'https://graph.facebook.com/v23.0',
+      igUserId: readEnv(env, 'NAOEUMFA_DISCOVERY_IG_USER_ID'),
+      accessToken: readEnv(env, 'NAOEUMFA_DISCOVERY_ACCESS_TOKEN'),
     },
     meta: {
-      appSecret: metaSecret(env, 'FANATION_META_APP_SECRET', commentSource, demo),
-      verifyToken: metaSecret(env, 'FANATION_META_VERIFY_TOKEN', commentSource, demo),
-      graphBaseUrl: readEnv(env, 'FANATION_GRAPH_BASE_URL') ?? DEFAULT_GRAPH_BASE_URL,
+      appSecret: metaSecret(env, 'NAOEUMFA_META_APP_SECRET', commentSource, demo),
+      verifyToken: metaSecret(env, 'NAOEUMFA_META_VERIFY_TOKEN', commentSource, demo),
+      graphBaseUrl: readEnv(env, 'NAOEUMFA_GRAPH_BASE_URL') ?? DEFAULT_GRAPH_BASE_URL,
       tokenTransport: transport,
       igUserId,
       igAccessToken,
@@ -199,26 +207,26 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     commentSource,
     liveFromMs,
-    pollIntervalSeconds: readInt(env, 'FANATION_POLL_INTERVAL_SECONDS', commentSource === 'simulated' ? 6 : 60, 2, 86_400),
-    pollMediaLimit: readInt(env, 'FANATION_POLL_MEDIA_LIMIT', 10, 1, 50),
-    momentumWindowSeconds: readInt(env, 'FANATION_MOMENTUM_WINDOW_SECONDS', commentSource === 'simulated' ? 60 : 3_600, 10, 604_800),
-    layoutEpochSeconds: readInt(env, 'FANATION_LAYOUT_EPOCH_SECONDS', commentSource === 'simulated' ? 60 : 600, 10, 604_800),
-    seasonSeconds: readInt(env, 'FANATION_SEASON_SECONDS', commentSource === 'simulated' ? 300 : 604_800, 60, 31_536_000),
+    pollIntervalSeconds: readInt(env, 'NAOEUMFA_POLL_INTERVAL_SECONDS', commentSource === 'simulated' ? 6 : 60, 2, 86_400),
+    pollMediaLimit: readInt(env, 'NAOEUMFA_POLL_MEDIA_LIMIT', 10, 1, 50),
+    momentumWindowSeconds: readInt(env, 'NAOEUMFA_MOMENTUM_WINDOW_SECONDS', commentSource === 'simulated' ? 60 : 3_600, 10, 604_800),
+    layoutEpochSeconds: readInt(env, 'NAOEUMFA_LAYOUT_EPOCH_SECONDS', commentSource === 'simulated' ? 60 : 600, 10, 604_800),
+    seasonSeconds: readInt(env, 'NAOEUMFA_SEASON_SECONDS', commentSource === 'simulated' ? 300 : 604_800, 60, 31_536_000),
     adminToken: readAdminToken(env),
     bridgeSecret: readBridgeSecret(env),
-    adsPath: env.FANATION_ADS_PATH?.trim() || 'data/ads.json',
+    adsPath: readEnv(env, 'NAOEUMFA_ADS_PATH') ?? 'data/ads.json',
     payments: {
       webhookSecret:
-        pixKey !== null || readCryptoRail(env, 'FANATION_USDT') || readCryptoRail(env, 'FANATION_USDC') || readCryptoRail(env, 'FANATION_BTC')
-          ? requireSecret(env, 'FANATION_PAYMENT_WEBHOOK_SECRET', demo)
-          : (readEnv(env, 'FANATION_PAYMENT_WEBHOOK_SECRET') ?? ''),
+        pixKey !== null || readCryptoRail(env, 'NAOEUMFA_USDT') || readCryptoRail(env, 'NAOEUMFA_USDC') || readCryptoRail(env, 'NAOEUMFA_BTC')
+          ? requireSecret(env, 'NAOEUMFA_PAYMENT_WEBHOOK_SECRET', demo)
+          : (readEnv(env, 'NAOEUMFA_PAYMENT_WEBHOOK_SECRET') ?? ''),
       pixKey,
-      pixMerchantName: readEnv(env, 'FANATION_PIX_MERCHANT_NAME') ?? 'NAO E UM FA',
-      pixMerchantCity: readEnv(env, 'FANATION_PIX_MERCHANT_CITY') ?? 'SAO PAULO',
+      pixMerchantName: readEnv(env, 'NAOEUMFA_PIX_MERCHANT_NAME') ?? 'NAO E UM FA',
+      pixMerchantCity: readEnv(env, 'NAOEUMFA_PIX_MERCHANT_CITY') ?? 'SAO PAULO',
       cryptoRails: {
-        USDT: readCryptoRail(env, 'FANATION_USDT'),
-        USDC: readCryptoRail(env, 'FANATION_USDC'),
-        BTC: readCryptoRail(env, 'FANATION_BTC'),
+        USDT: readCryptoRail(env, 'NAOEUMFA_USDT'),
+        USDC: readCryptoRail(env, 'NAOEUMFA_USDC'),
+        BTC: readCryptoRail(env, 'NAOEUMFA_BTC'),
       },
     },
   };

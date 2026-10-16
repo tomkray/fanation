@@ -52,7 +52,7 @@ describe('ad requests', () => {
 describe('ad inventory', () => {
   it('flies only after approval, keeps contact e-mails private, and survives a restart', () => {
     let now = 1_800_000_000_000;
-    const file = path.join(mkdtempSync(path.join(tmpdir(), 'fanation-ads-')), 'ads.json');
+    const file = path.join(mkdtempSync(path.join(tmpdir(), 'naoeumfa-ads-')), 'ads.json');
     const ads = new AdService(file, false, () => now);
     const result = validateAdRequest(valid);
     if (!result.ok) {

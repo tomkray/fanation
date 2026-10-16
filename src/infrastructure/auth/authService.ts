@@ -2,7 +2,7 @@
  * "Connect": proving you are an Instagram @ without passwords (Axiom A10).
  *
  * Instagram Login only covers business/creator accounts, so every fan proves
- * their handle the way they already use Fanation: the site shows a one-time
+ * their handle the way they already use Não É Um Fã: the site shows a one-time
  * code, they comment it on any @naoeumfa post, and the comment arrives
  * through Meta (signed webhook or the Graph API) with Meta's own author
  * username. A code only verifies the @ it was issued for, once, within 15

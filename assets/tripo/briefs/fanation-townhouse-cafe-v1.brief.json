@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "id": "fanation-townhouse-cafe-v1",
-  "kind": "static-prop",
-  "prompt": "A corner shop house: a cheerful cafe on the ground floor with a striped red awning and tiny outdoor tables, two floors of apartments above with green shutters. Stylized cartoon game asset in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, slightly exaggerated proportions, hand-painted textures, vibrant natural colours, clean readable silhouette from a high three-quarter camera. Single object only on a flat square base no larger than its footprint, no terrain, no people, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
-  "faceLimit": 8000,
-  "seed": 1132,
-  "referenceNotes": "Fanation catalogue (home \u00b7 TOWNHOUSE). 16 m lot; ~13 m footprint. No world placement is authorized by this brief."
-}

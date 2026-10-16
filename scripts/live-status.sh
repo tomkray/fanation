@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Prove local API + public Vercel proxy see the same live city.
 set -euo pipefail
-LOCAL="${FANATION_API_URL:-http://127.0.0.1:8787}"
-PUBLIC="${FANATION_PUBLIC_URL:-https://fanation-roan.vercel.app}"
+LOCAL="${NAOEUMFA_API_URL:-http://127.0.0.1:8787}"
+PUBLIC="${NAOEUMFA_PUBLIC_URL:-https://fanation-roan.vercel.app}"
 
 echo "== local $LOCAL =="
 curl -sS -m 5 "$LOCAL/api/v1/config" | head -c 220; echo

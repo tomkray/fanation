@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "naoeumfa-townhouse-duplex-v1",
+  "kind": "static-prop",
+  "prompt": "A modern duplex home: two connected boxes in sky blue and white, a rooftop terrace with planters, big square windows, a wooden fence. Stylized cartoon game asset in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, slightly exaggerated proportions, hand-painted textures, vibrant natural colours, clean readable silhouette from a high three-quarter camera. Single object only on a flat square base no larger than its footprint, no terrain, no people, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
+  "faceLimit": 8000,
+  "seed": 1133,
+  "referenceNotes": "Não É Um Fã catalogue (home \u00b7 TOWNHOUSE). 16 m lot; ~13 m footprint. No world placement is authorized by this brief."
+}

@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "id": "fanation-house-aframe-v1",
-  "kind": "static-prop",
-  "prompt": "A playful A-frame house: tall triangular dark wood roof down to the ground, a big triangular glass front, a little wooden balcony, warm orange accents. Stylized cartoon game asset in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, slightly exaggerated proportions, hand-painted textures, vibrant natural colours, clean readable silhouette from a high three-quarter camera. Single object only on a flat square base no larger than its footprint, no terrain, no people, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
-  "faceLimit": 7000,
-  "seed": 1123,
-  "referenceNotes": "Fanation catalogue (home \u00b7 HOUSE). 16 m lot; ~11 m footprint. No world placement is authorized by this brief."
-}

@@ -6,8 +6,8 @@ A8 governs spacing, legibility and touch controls. The existing SVG brand pipeli
 keeps the mark sharp at header and favicon sizes; live text renders the domain.
 
 Source: `scripts/generate-brand.mjs`. Installed assets:
-`public/brand/naoeumfa-mark.svg`, the legacy `fanation-mark.svg` alias,
-`public/favicon.svg` and `public/brand/naoeumfa-mark-512.png` for apple-touch.
+`public/brand/naoeumfa-mark.svg`, `public/favicon.svg` and
+`public/brand/naoeumfa-mark-512.png` for apple-touch.
 The PNG is a 512px browser raster export of the exact SVG, not a different mark.
 
 Built-in imagegen produced two raster studies; the retained second study and
@@ -22,11 +22,5 @@ The preview intentionally kept API requests unavailable; this is branding/layout
 acceptance, not gameplay or backend acceptance. Evidence:
 `~/.kray/work/naoeumfa-brand-20261016/report.json` and `header-*.png`.
 
-The concurrent site session integrated the SVG/header work in `448a6b4` and
-`6ed60d2`; this continuation adds the matching apple-touch icon and records the
-checks. No changes from that session were overwritten. A check of the public
-custom domain returned a TLS name error; repository changes alone do not prove
-public deployment or DNS/TLS readiness.
-
 Discarded branch: ship a generated bitmap with visible edge artifacts or keep
-the old UFO apple-touch icon alongside the new avatar.
+an old UFO apple-touch icon alongside the new avatar.

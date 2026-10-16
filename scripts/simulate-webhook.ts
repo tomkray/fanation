@@ -17,17 +17,17 @@ function argValue(name: string): string | undefined {
 }
 
 function appSecret(): string {
-  const fromEnv = process.env.FANATION_META_APP_SECRET;
+  const fromEnv = process.env.NAOEUMFA_META_APP_SECRET;
   if (fromEnv) {
     return fromEnv;
   }
   if (existsSync(DEV_SECRETS_PATH)) {
     const secrets = JSON.parse(readFileSync(DEV_SECRETS_PATH, 'utf-8')) as Record<string, string>;
-    if (secrets.FANATION_META_APP_SECRET) {
-      return secrets.FANATION_META_APP_SECRET;
+    if (secrets.NAOEUMFA_META_APP_SECRET) {
+      return secrets.NAOEUMFA_META_APP_SECRET;
     }
   }
-  throw new Error('No app secret: run `npm run dev` once or set FANATION_META_APP_SECRET.');
+  throw new Error('No app secret: run `npm run dev` once or set NAOEUMFA_META_APP_SECRET.');
 }
 
 async function main(): Promise<void> {
@@ -39,13 +39,13 @@ async function main(): Promise<void> {
   if (!/^[a-z0-9._]{1,30}$/.test(fandom)) {
     throw new Error('--fandom must be an Instagram handle, e.g. taylorswift.');
   }
-  const apiUrl = process.env.FANATION_API_URL ?? 'http://127.0.0.1:8787';
+  const apiUrl = process.env.NAOEUMFA_API_URL ?? 'http://127.0.0.1:8787';
   const nowSeconds = Math.floor(Date.now() / 1000);
 
   const entry = Array.from({ length: count }, (_, i) => {
     const fan = `webhook_fan_${randomBytes(3).toString('hex')}`;
     return {
-      id: 'fanation_ig_account',
+      id: 'naoeumfa_ig_account',
       time: nowSeconds + i,
       changes: [
         {
