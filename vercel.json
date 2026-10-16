@@ -1,12 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://toms-macbook-pro.tail3998b5.ts.net/api/:path*"
-    },
-    {
       "source": "/healthz",
-      "destination": "https://toms-macbook-pro.tail3998b5.ts.net/healthz"
+      "destination": "/api/healthz"
     }
   ]
 }
