@@ -27,63 +27,63 @@ MODEL = "eleven_v3"
 
 LINES = [
     {
-        "say": "Day one. The planet just went live.",
+        "say": "Day one. The planet just went live. This is yours.",
         "shot": "wide",
         "eyebrow": "DAY ONE",
         "headline": "The planet just went live.",
-        "sub": "Four cities. One comment.",
-        "cta": "🏠  Comment their @",
+        "sub": "This is yours.",
+        "cta": "🏠  Your planet",
     },
     {
-        "say": "You got an idol?",
+        "say": "You got an idol? Then this is your moment.",
         "shot": "push",
         "eyebrow": "YOUR IDOL",
         "headline": "You got an idol?",
-        "sub": "Artist. Club. Creator. Anyone.",
-        "cta": "💜  Name them",
+        "sub": "This is your moment.",
+        "cta": "💜  Your moment",
     },
     {
-        "say": "Comment their @.",
+        "say": "Comment their @. That's how you claim it.",
         "shot": "block",
         "eyebrow": "ONE COMMENT",
         "headline": "Comment their @.",
-        "sub": "That's the whole move.",
-        "cta": "⚡  Drop the @",
+        "sub": "That's how you claim it.",
+        "cta": "⚡  Claim it",
     },
     {
         "say": "You get a house. Right next to them.",
         "shot": "houses",
         "eyebrow": "YOUR HOUSE",
         "headline": "A house. Next door.",
-        "sub": "Built beside the idol you named.",
-        "cta": "🏠  Right next to them",
+        "sub": "Right beside your idol.",
+        "cta": "🏠  Next door",
     },
     {
-        "say": "Right down here. In the streets.",
+        "say": "Right down here. The door is yours.",
         "shot": "street",
         "eyebrow": "DOWN HERE",
-        "headline": "Down in the streets.",
-        "sub": "Lamps. Blocks. Your door.",
+        "headline": "The door is yours.",
+        "sub": "Right down in the streets.",
         "cta": "🏠  This close",
     },
     {
-        "say": "Plus your FANT pack.",
+        "say": "Plus your FANT pack. You earned it.",
         "shot": "pack",
         "eyebrow": "YOUR PACK",
         "headline": "Plus your $FANT pack.",
-        "sub": "Yours the moment you move in.",
-        "cta": "⚡  $FANT on day one",
+        "sub": "You earned it.",
+        "cta": "⚡  Your pack",
     },
     {
         "say": "One mint per @. Forever.",
         "shot": "tower",
         "eyebrow": "ONE MINT",
         "headline": "One @. Forever.",
-        "sub": "You mint once. After that, you buy.",
-        "cta": "💜  One home per @",
+        "sub": "You mint once. Then it's yours.",
+        "cta": "💜  One mint",
     },
     {
-        "say": "Comment now.",
+        "say": "Comment now. On fanation club.",
         "shot": "cta",
         "eyebrow": "GO",
         "headline": "Comment now.",
@@ -92,14 +92,16 @@ LINES = [
     },
 ]
 
-CAPTION = """Day one. The planet just went live. 🏠
+CAPTION = """Day one. The planet just went live. This is yours. 🏠
 
-Got an idol? Comment their @.
+You got an idol? This is your moment.
+Comment their @. That's how you claim it.
 
-You get a house right next to them.
-Plus your $FANT pack. ⚡
+A house, right next to them.
+Plus your $FANT pack. You earned it. ⚡
 
 One mint per @. Forever.
+Comment now. @fanation.club
 
 #FanationClub #DayOne #Fandom
 """
@@ -158,15 +160,20 @@ def build_voice(work: Path, key: str, voice_id: str) -> tuple[Path, list[tuple[f
         clip = work / f"line_{i:02d}.mp3"
         speak(line["say"], clip, key, voice_id)
         length = duration_seconds(clip)
-        timeline.append((cursor, cursor + length, line))
+        start = cursor
         pieces.append(clip)
         cursor += length
         if i < len(LINES) - 1:
             pieces.append(gap)
             cursor += duration_seconds(gap)
+        # The line owns the silence after it. The next line is the only thing that may replace it.
+        timeline.append((start, cursor, line))
     tail = work / "tail.mp3"
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", "0.55", str(tail)])
     pieces.append(tail)
+    if timeline:
+        start, end, line = timeline[-1]
+        timeline[-1] = (start, end + duration_seconds(tail), line)
     listing = work / "voice.txt"
     listing.write_text("".join(f"file '{piece}'\n" for piece in pieces), encoding="utf-8")
     voice = work / "voice.wav"
@@ -229,27 +236,45 @@ async def capture(frames: Path, seconds: float, timeline: list[tuple[float, floa
             await page.goto(f"{FRONTEND}/?cinematic=1&capture=1&focus=bts.bighitofficial", wait_until="domcontentloaded", timeout=60_000)
             await page.wait_for_function("() => typeof window.__fanationCinematic?.setShots === 'function'", timeout=90_000)
             await page.evaluate("(shots) => window.__fanationCinematic.setShots(shots)", shots)
-            shown = -1
+            await page.evaluate(
+                """() => {
+                  const reactFoot = document.querySelector('#reel-caption');
+                  if (reactFoot) reactFoot.remove();
+                  const own = document.createElement('footer');
+                  own.id = 'reel-line';
+                  own.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;flex-direction:column;gap:12px;padding:0 40px 72px;pointer-events:none;';
+                  document.body.appendChild(own);
+                }"""
+            )
             for i in range(total):
                 t = i / FPS
-                beat = next((n for n, (a, b, _) in enumerate(timeline) if a <= t < b), len(timeline) - 1)
-                if beat != shown:
-                    shown = beat
-                    line = timeline[beat][2]
-                    await page.evaluate(
-                        """(line) => {
-                          const eye = document.querySelector('.cinematic__bottom .eyebrow');
-                          const head = document.querySelector('.cinematic__headline');
-                          const sub = document.querySelector('.cinematic__sub');
-                          const cta = document.querySelector('.cinematic__cta');
-                          if (eye) eye.textContent = line.eyebrow;
-                          if (head) head.textContent = line.headline;
-                          if (sub) sub.textContent = line.sub;
-                          if (cta) cta.textContent = line.cta;
-                        }""",
-                        line,
-                    )
-                await page.evaluate("t => window.__fanationCinematic.renderFrame(t)", t)
+                line = timeline[0][2]
+                for start, end, candidate in timeline:
+                    if start <= t < end:
+                        line = candidate
+                        break
+                    if start <= t:
+                        line = candidate
+                await page.evaluate(
+                    """([t, line]) => {
+                      const foot = document.querySelector('#reel-line');
+                      if (foot) {
+                        const paint = (tag, value, style) => {
+                          const node = document.createElement(tag);
+                          node.textContent = value;
+                          node.style.cssText = style;
+                          foot.appendChild(node);
+                        };
+                        foot.replaceChildren();
+                        paint('span', line.eyebrow, 'font-size:28px;font-weight:700;letter-spacing:0.08em;color:#c9b6ff;');
+                        paint('p', line.headline, 'margin:0;font-size:68px;font-weight:700;line-height:1.05;letter-spacing:-1px;color:#fff;');
+                        paint('p', line.sub, 'margin:0;font-size:32px;color:rgba(255,255,255,0.72);');
+                        paint('p', line.cta, 'margin:8px 0 0;align-self:flex-start;padding:12px 22px;border-radius:999px;background:#0a84ff;color:#fff;font-size:32px;font-weight:700;');
+                      }
+                      window.__fanationCinematic.renderFrame(t);
+                    }""",
+                    [t, line],
+                )
                 await page.screenshot(path=str(frames / f"frame_{i:05d}.jpg"), type="jpeg", quality=90)
         finally:
             await browser.close()

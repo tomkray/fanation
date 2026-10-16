@@ -355,6 +355,10 @@ export class IsometricCityEngine {
   private cinematicFocus: THREE.Vector3 | null = null;
   /** Hard-cut shot list for a reel. Empty means the original single orbit. */
   private cinematicShots: CinematicShot[] = [];
+  /** True only for the cinematic frame currently being drawn. The next live frame clears it. */
+  private hideSkyCraft = false;
+  /** Bumps on every camera flight so a newer search cancels the one still in the air. */
+  private cameraFlight = 0;
 
   constructor(private readonly options: CityEngineOptions) {
     const { container } = options;
@@ -684,6 +688,20 @@ export class IsometricCityEngine {
     this.animateCameraTo(new THREE.Vector3(x, 0, z), Math.max(this.camera.zoom, this.fitZoom * 3));
   }
 
+  /**
+   * Flies to one house and rings it, wide enough to read the neighborhood.
+   * Returns the chunk the house lives in.
+   */
+  focusHome(target: Pick<PropertyDto, 'x' | 'z' | 'footprint' | 'propertyClass' | 'fans' | 'colorHex'>): string {
+    this.applyView('city');
+    this.highlight(target);
+    // About three blocks across: the house stays ringed, and the streets around it stay in frame.
+    const span = Math.max(150, this.selectionTop * 1.8);
+    const zoom = THREE.MathUtils.clamp(FRUSTUM_HEIGHT / span, this.controls.minZoom, this.controls.maxZoom);
+    this.animateCameraTo(new THREE.Vector3(target.x, 0, target.z), zoom, true);
+    return chunkKeyAt(target.x, target.z);
+  }
+
   setView(view: WorldView): void {
     if (view === 'planet') {
       this.animateCameraTo(new THREE.Vector3(), Math.min(this.fitZoom * PLANET_VIEW_RATIO, this.planetFrameZoom()));
@@ -822,7 +840,10 @@ export class IsometricCityEngine {
       this.camera.zoom = this.fitZoom * (0.9 + 1.3 * eased);
     }
     this.camera.updateProjectionMatrix();
+    // A zeppelin looping the district will fill a close lens. Wide shots keep the craft.
+    this.hideSkyCraft = shot !== null && shot.view !== 'planet' && this.camera.zoom > this.fitZoom * 16;
     this.tick(tSeconds, tSeconds * 1000);
+    this.hideSkyCraft = false;
     this.renderFrame();
   }
 
@@ -1915,6 +1936,7 @@ export class IsometricCityEngine {
     if (this.view === 'city') {
       this.updateCars(seconds);
       this.skyAds.update(seconds);
+      this.skyAds.setFlyersVisible(!this.hideSkyCraft);
     }
     if (this.selection.visible) {
       const ring = this.selectionRadius * (1 + 0.12 * Math.sin(seconds * 5));
@@ -2063,21 +2085,36 @@ export class IsometricCityEngine {
     return THREE.MathUtils.clamp(Math.min(zoomByWidth, zoomByHeight), 0.001, 4);
   }
 
-  private animateCameraTo(target: THREE.Vector3, zoom: number): void {
+  private animateCameraTo(target: THREE.Vector3, zoom: number, isometric = false): void {
+    const flight = ++this.cameraFlight;
     const fromTarget = this.controls.target.clone();
     const offset = this.camera.position.clone().sub(fromTarget);
     const fromZoom = this.camera.zoom;
+    const iso =
+      isometric
+        ? new THREE.Vector3(Math.sin(ISO_POLAR) * Math.cos(ISO_AZIMUTH), Math.cos(ISO_POLAR), Math.sin(ISO_POLAR) * Math.sin(ISO_AZIMUTH))
+        : null;
     const start = performance.now();
     const step = (): void => {
+      if (flight !== this.cameraFlight || this.disposed) {
+        return;
+      }
       const t = Math.min(1, (performance.now() - start) / 700);
       const k = 1 - (1 - t) ** 3;
-      const current = new THREE.Vector3().lerpVectors(fromTarget, new THREE.Vector3(target.x, this.controls.target.y, target.z), k);
-      current.y = this.controls.target.y;
+      const current = new THREE.Vector3().lerpVectors(fromTarget, new THREE.Vector3(target.x, 0, target.z), k);
+      if (!iso) {
+        current.y = this.controls.target.y;
+      }
       this.controls.target.copy(current);
-      this.camera.position.copy(current).add(offset);
+      if (iso) {
+        this.camera.position.copy(current).addScaledVector(iso, this.cameraDistance);
+        this.camera.lookAt(current);
+      } else {
+        this.camera.position.copy(current).add(offset);
+      }
       this.camera.zoom = THREE.MathUtils.lerp(fromZoom, THREE.MathUtils.clamp(zoom, this.controls.minZoom, this.controls.maxZoom), k);
       this.camera.updateProjectionMatrix();
-      if (t < 1 && !this.disposed) {
+      if (t < 1) {
         requestAnimationFrame(step);
       }
     };

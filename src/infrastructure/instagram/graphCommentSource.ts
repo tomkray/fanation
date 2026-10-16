@@ -45,9 +45,17 @@ interface GraphPage {
   readonly next: string | null;
 }
 
+interface ListedMedia {
+  readonly id: string;
+  readonly timestampMs: number;
+  readonly commentsCount: number | null;
+}
+
 export class GraphCommentSource implements CommentSource {
   readonly name = 'instagram_poll' as const;
   private readonly lastCommentsCountByMedia = new Map<string, number>();
+  /** Posts already read on a token that does not report comments_count. */
+  private readonly seenWithoutCount = new Set<string>();
   private readonly fetchImpl: typeof fetch;
   private readonly allowedOrigin: string;
 
@@ -57,26 +65,83 @@ export class GraphCommentSource implements CommentSource {
   }
 
   async fetchComments(): Promise<InstagramCommentEvent[]> {
-    const mediaUrl = new URL(`${this.options.graphBaseUrl}/${encodeURIComponent(this.options.igUserId)}/media`);
-    mediaUrl.searchParams.set('fields', 'id,timestamp,comments_count');
-    mediaUrl.searchParams.set('limit', String(this.options.mediaLimit));
-    const mediaPage = await this.getPage(mediaUrl.toString());
+    const listed = await this.listMedia();
+    let newestId: string | null = null;
+    let newestAt = Number.NEGATIVE_INFINITY;
+    for (const media of listed.media) {
+      if (media.timestampMs >= newestAt) {
+        newestAt = media.timestampMs;
+        newestId = media.id;
+      }
+    }
 
     const events: InstagramCommentEvent[] = [];
-    for (const media of mediaPage.data) {
-      const mediaId = readString(media, 'id');
-      const count = typeof media.comments_count === 'number' ? media.comments_count : null;
-      if (!mediaId || count === null) {
+    for (const media of listed.media) {
+      if (!this.shouldRead(media, listed.countsAvailable, media.id === newestId)) {
+        continue;
+      }
+      events.push(...(await this.fetchMediaComments(media.id)));
+      if (media.commentsCount !== null) {
+        this.lastCommentsCountByMedia.set(media.id, media.commentsCount);
+      } else {
+        this.seenWithoutCount.add(media.id);
+      }
+    }
+    return events;
+  }
+
+  /**
+   * `comments_count` is the cheap "did this post change?" signal. Some tokens
+   * reject that field; the newest post is then re-read every tick, and each
+   * older post is read once. Comment ids already in the journal are ignored.
+   */
+  private async listMedia(): Promise<{ readonly countsAvailable: boolean; readonly media: readonly ListedMedia[] }> {
+    try {
+      const page = await this.getPage(this.mediaListUrl(true));
+      return { countsAvailable: true, media: this.readMedia(page, true) };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      if (!(err instanceof GraphApiError) || !/comments_count/i.test(message)) {
+        throw err;
+      }
+      logger.warn('graph_comments_count_unavailable', { message });
+      const page = await this.getPage(this.mediaListUrl(false));
+      return { countsAvailable: false, media: this.readMedia(page, false) };
+    }
+  }
+
+  private mediaListUrl(withCount: boolean): string {
+    const mediaUrl = new URL(`${this.options.graphBaseUrl}/${encodeURIComponent(this.options.igUserId)}/media`);
+    mediaUrl.searchParams.set('fields', withCount ? 'id,timestamp,comments_count' : 'id,timestamp');
+    mediaUrl.searchParams.set('limit', String(this.options.mediaLimit));
+    return mediaUrl.toString();
+  }
+
+  private readMedia(page: GraphPage, withCount: boolean): ListedMedia[] {
+    const media: ListedMedia[] = [];
+    for (const raw of page.data) {
+      const id = readString(raw, 'id');
+      if (!id) {
         logger.warn('graph_media_skipped_malformed');
         continue;
       }
-      if (this.lastCommentsCountByMedia.get(mediaId) === count) {
-        continue;
-      }
-      events.push(...(await this.fetchMediaComments(mediaId)));
-      this.lastCommentsCountByMedia.set(mediaId, count);
+      const timestamp = readString(raw, 'timestamp');
+      const timestampMs = timestamp ? Date.parse(timestamp) : Number.NaN;
+      const commentsCount = withCount && typeof raw.comments_count === 'number' ? raw.comments_count : null;
+      media.push({ id, timestampMs: Number.isFinite(timestampMs) ? timestampMs : 0, commentsCount });
     }
-    return events;
+    return media;
+  }
+
+  private shouldRead(media: ListedMedia, countsAvailable: boolean, isNewest: boolean): boolean {
+    if (countsAvailable && media.commentsCount !== null) {
+      return this.lastCommentsCountByMedia.get(media.id) !== media.commentsCount;
+    }
+    // The launch reel is the newest post. Keep reading it until a count exists.
+    if (isNewest) {
+      return true;
+    }
+    return !this.seenWithoutCount.has(media.id);
   }
 
   private async fetchMediaComments(mediaId: string): Promise<InstagramCommentEvent[]> {
@@ -106,7 +171,8 @@ export class GraphCommentSource implements CommentSource {
     const commentId = readString(raw, 'id');
     const text = readString(raw, 'text');
     const from = isRecord(raw.from) ? raw.from : null;
-    const username = readString(raw, 'username') ?? (from ? readString(from, 'username') : null);
+    const user = isRecord(raw.user) ? raw.user : null;
+    const username = readString(raw, 'username') ?? (from ? readString(from, 'username') : null) ?? (user ? readString(user, 'username') : null);
     const timestamp = readString(raw, 'timestamp');
     const receivedAtMs = timestamp ? Date.parse(timestamp) : Number.NaN;
     if (!commentId || !text || !username || !Number.isFinite(receivedAtMs)) {

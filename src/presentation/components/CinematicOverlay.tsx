@@ -4,7 +4,7 @@ import { formatInteger } from '../format.js';
 import { BrandLockup } from './BrandLockup.js';
 
 /** 9:16 overlay the video agent records; mirrors the caption's call to action. */
-export const CinematicOverlay: React.FC<{ readonly world: WorldSummaryDto }> = ({ world }) => {
+export const CinematicOverlay: React.FC<{ readonly world: WorldSummaryDto; readonly capture?: boolean }> = ({ world, capture = false }) => {
   const leader = world.standings[0];
   const leaderName = leader && leader.displayName !== `@${leader.fandomHandle}` ? `${leader.displayName} (@${leader.fandomHandle})` : `@${leader?.fandomHandle ?? ''}`;
   return (
@@ -15,8 +15,8 @@ export const CinematicOverlay: React.FC<{ readonly world: WorldSummaryDto }> = (
           <span className="live-dot" /> LIVE
         </span>
       </header>
-      <footer className="cinematic__bottom">
-        {leader && (
+      <footer className="cinematic__bottom" id="reel-caption">
+        {capture ? null : leader && (
           <>
             <span className="eyebrow" style={{ color: leader.neonColorHex }}>
               #1 in the global ranking
@@ -27,7 +27,7 @@ export const CinematicOverlay: React.FC<{ readonly world: WorldSummaryDto }> = (
             </p>
           </>
         )}
-        <p className="cinematic__cta">Comment your idol&apos;s @ to move in</p>
+        {capture ? null : <p className="cinematic__cta">Comment your idol&apos;s @ to move in</p>}
       </footer>
     </div>
   );

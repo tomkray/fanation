@@ -14,7 +14,7 @@ import type { AllocationBucket } from '../core/tokenomics.js';
 import type { PropertyClass, PropertyFootprint } from '../core/property.js';
 import type { CommentRejectionCode, FandomCategory, ListingAssetType, ListingStatus, PaymentMethod } from '../core/types.js';
 
-export type CommentSourceName = 'instagram_webhook' | 'instagram_poll' | 'simulated';
+export type CommentSourceName = 'instagram_webhook' | 'instagram_poll' | 'simulated' | 'muse_bridge';
 
 /** What the map needs to draw one property. */
 export interface PropertyDto {

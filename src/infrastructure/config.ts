@@ -56,6 +56,11 @@ export interface AppConfig {
   readonly seasonSeconds: number;
   /** Bearer token for /api/v1/admin/*; admin routes are off when unset. */
   readonly adminToken: string | null;
+  /**
+   * Local Muse dump door. Off when unset. Never put this in a public frontend;
+   * the route only accepts the secret header.
+   */
+  readonly bridgeSecret: string | null;
   readonly adsPath: string;
   readonly payments: {
     readonly webhookSecret: string;
@@ -103,6 +108,15 @@ function readAdminToken(env: NodeJS.ProcessEnv): string | null {
   const value = readEnv(env, 'FANATION_ADMIN_TOKEN');
   if (value !== null && value.length < 24) {
     throw new Error('FANATION_ADMIN_TOKEN must be at least 24 characters (or unset to disable admin routes).');
+  }
+  return value;
+}
+
+/** Optional local door for Muse comment dumps. Off when unset. */
+function readBridgeSecret(env: NodeJS.ProcessEnv): string | null {
+  const value = readEnv(env, 'FANATION_BRIDGE_SECRET');
+  if (value !== null && value.length < 24) {
+    throw new Error('FANATION_BRIDGE_SECRET must be at least 24 characters (or unset to disable the Muse bridge).');
   }
   return value;
 }
@@ -191,6 +205,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     layoutEpochSeconds: readInt(env, 'FANATION_LAYOUT_EPOCH_SECONDS', commentSource === 'simulated' ? 60 : 600, 10, 604_800),
     seasonSeconds: readInt(env, 'FANATION_SEASON_SECONDS', commentSource === 'simulated' ? 300 : 604_800, 60, 31_536_000),
     adminToken: readAdminToken(env),
+    bridgeSecret: readBridgeSecret(env),
     adsPath: env.FANATION_ADS_PATH?.trim() || 'data/ads.json',
     payments: {
       webhookSecret:

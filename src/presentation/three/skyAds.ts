@@ -1,7 +1,7 @@
 /**
  * Partner advertising in the world (Axiom A9): zeppelins that circle each
- * city with the creative on both flanks, billboards inside each city (never on the avenues),
- * and small planes towing a banner. Creatives are drawn by the game from text
+ * city with the creative on both flanks. Standing billboards and towed banners
+ * are not drawn; they covered the houses. Creatives are drawn by the game from text
  * and colours only, so nothing foreign is ever loaded into the scene; every ad
  * prints the partner's real @handle and a "Sponsored" mark.
  */
@@ -12,14 +12,8 @@ import type { AdDto, CitySummaryDto } from '../../shared/apiContract.js';
 const BANNER_W = 1024;
 const BANNER_H = 256;
 const ZEPPELIN_ALTITUDE = 210;
-const BANNER_PLANE_ALTITUDE = 120;
 /** Game scale, not real scale: an ad has to read from the city view. */
 const ZEPPELIN_SCALE = 2.2;
-const BANNER_PLANE_SCALE = 2;
-const BILLBOARD_SCALE = 1.8;
-/** Two blocks off a city plaza, so a billboard sits in the city and never on the avenue. */
-const BILLBOARD_STEP_M = 124;
-const BILLBOARD_FACING = Math.PI / 4;
 
 interface Flyer {
   readonly group: THREE.Group;
@@ -117,8 +111,6 @@ export class SkyAds {
     this.signature = signature;
     this.clear();
     const zeppelins = ads.filter((a) => a.placement === 'ZEPPELIN');
-    const billboards = ads.filter((a) => a.placement === 'BILLBOARD');
-    const banners = ads.filter((a) => a.placement === 'SKY_BANNER');
 
     cities.forEach((city, i) => {
       const ad = pickFor(zeppelins, city.id, 0);
@@ -128,33 +120,13 @@ export class SkyAds {
       const radius = city.id === 'CAPITAL' ? 900 : THREE.MathUtils.clamp(Math.sqrt(Math.max(1, city.properties)) * 9, 200, 1400);
       this.addFlyer(this.zeppelin(ad), city.x, city.z, radius, ZEPPELIN_ALTITUDE + i * 22, i * 1.3, (i % 2 === 0 ? 1 : -1) * (24 / radius));
     });
-    cities
-      .filter((c) => c.id !== 'CAPITAL')
-      .slice(0, 2)
-      .forEach((city, i) => {
-        const ad = pickFor(banners, city.id, i);
-        if (ad) {
-          const radius = THREE.MathUtils.clamp(Math.sqrt(Math.max(1, city.properties)) * 12, 260, 1600);
-          this.addFlyer(this.bannerPlaneTow(ad), city.x, city.z, radius, BANNER_PLANE_ALTITUDE, i * 2.1 + 0.6, 30 / radius);
-        }
-      });
+  }
 
-    cities
-      .filter((c) => c.id !== 'CAPITAL')
-      .forEach((city, cityIndex) => {
-        const sx = Math.sign(city.x) || 1;
-        const sz = Math.sign(city.z) || 1;
-        const spots: readonly [number, number][] = [
-          [city.x + sx * BILLBOARD_STEP_M, city.z + sz * BILLBOARD_STEP_M * 0.35],
-          [city.x + sx * BILLBOARD_STEP_M * 0.35, city.z + sz * BILLBOARD_STEP_M],
-        ];
-        spots.forEach(([x, z], i) => {
-          const ad = pickFor(billboards, city.id, cityIndex * 2 + i);
-          if (ad) {
-            this.billboard(ad, x, z);
-          }
-        });
-      });
+  /** Close-ups hide the looping craft so a zeppelin cannot cover the houses. */
+  setFlyersVisible(visible: boolean): void {
+    for (const flyer of this.flyers) {
+      flyer.group.visible = visible;
+    }
   }
 
   update(seconds: number): void {
@@ -248,39 +220,6 @@ export class SkyAds {
     g.add(beacon);
     g.scale.setScalar(ZEPPELIN_SCALE);
     return g;
-  }
-
-  private bannerPlaneTow(ad: AdDto): THREE.Group {
-    const g = new THREE.Group();
-    g.userData.adId = ad.id;
-    const accent = new THREE.MeshBasicMaterial({ color: ad.accentHex, toneMapped: false });
-    g.add(this.mesh(this.box, this.hullMaterial, 0, 0, 0, 9, 2.2, 2.2));
-    g.add(this.mesh(this.box, this.hullMaterial, 0.5, 0.2, 0, 2.4, 0.4, 14));
-    g.add(this.mesh(this.box, this.darkMaterial, -4, 1.4, 0, 1.8, 2.4, 0.4));
-    g.add(this.mesh(this.box, accent, -6, 0, 0, 3, 0.15, 0.15));
-    const panel = this.creativePanel(ad, 40, 10);
-    panel.position.set(-29, -1, 0);
-    g.add(panel);
-    g.scale.setScalar(BANNER_PLANE_SCALE);
-    return g;
-  }
-
-  private billboard(ad: AdDto, x: number, z: number): void {
-    const g = new THREE.Group();
-    g.userData.adId = ad.id;
-    g.position.set(x, 0, z);
-    g.rotation.y = BILLBOARD_FACING;
-    g.scale.setScalar(BILLBOARD_SCALE);
-    const accent = new THREE.MeshBasicMaterial({ color: ad.accentHex, toneMapped: false });
-    g.add(this.mesh(this.box, this.darkMaterial, -14, 20, 0, 1.6, 40, 1.6));
-    g.add(this.mesh(this.box, this.darkMaterial, 14, 20, 0, 1.6, 40, 1.6));
-    g.add(this.mesh(this.box, this.darkMaterial, 0, 47, 0, 50, 15, 1.2));
-    g.add(this.mesh(this.box, accent, 0, 55, 0, 50.6, 0.6, 1.4));
-    g.add(this.mesh(this.box, accent, 0, 39, 0, 50.6, 0.6, 1.4));
-    const panel = this.creativePanel(ad, 48, 12);
-    panel.position.set(0, 47, 0);
-    g.add(panel);
-    this.root.add(g);
   }
 
   private addFlyer(group: THREE.Group, centreX: number, centreZ: number, radius: number, altitude: number, phase: number, speed: number): void {

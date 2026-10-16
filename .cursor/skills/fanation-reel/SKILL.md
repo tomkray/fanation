@@ -37,7 +37,7 @@ Run `agent/.venv/bin/python tools/render_day_one.py` with the dev servers up. Sh
 
 Zoom on `dolly` and `crane` is a close-up (on the order of 70–130× the fitted city), not another map. Avenues stay empty road.
 
-On-screen type is the cinematic overlay. Marks are only 🏠 💜 ⚡. The headline says what the voice says.
+On-screen type is one block, painted every frame onto `#reel-line` (outside React, so a live update cannot restore another line). Each spoken line owns the silence after it. The words "Comment now" exist only on the last shot. Marks are only 🏠 💜 ⚡. The headline says what the voice says.
 
 ## Words
 

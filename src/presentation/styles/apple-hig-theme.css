@@ -250,6 +250,53 @@ ul {
   flex-shrink: 0;
 }
 
+.home-search {
+  position: fixed;
+  z-index: 21;
+  top: calc(var(--space-md) + var(--topbar-height) + var(--space-sm));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(440px, calc(100vw - 2 * var(--panel-width) - 64px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md);
+}
+
+.home-search__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.home-search__row {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.home-search__row .field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.home-search__row .button {
+  flex: 0 0 auto;
+}
+
+.home-search__note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
+.home-search__note--found {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
 .live-pill {
   display: inline-flex;
   align-items: center;
@@ -1463,6 +1510,10 @@ button.feed__button:hover {
     display: none;
   }
 
+  .home-search {
+    width: min(440px, calc(100% - 32px));
+  }
+
   /* The tab bar carries the Planet toggle on phones. */
   .topbar__view {
     display: none;
@@ -1563,10 +1614,11 @@ button.feed__button:hover {
 
 .cinematic__headline {
   font-family: var(--font-display);
-  font-size: 88px;
+  font-size: 72px;
   font-weight: 700;
-  line-height: 1.02;
-  letter-spacing: -1.6px;
+  line-height: 1.05;
+  letter-spacing: -1.2px;
+  overflow: hidden;
 }
 
 .cinematic__sub {

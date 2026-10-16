@@ -14,7 +14,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS ledger_events (
     seq                 BIGINT PRIMARY KEY,
     at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    source              VARCHAR(24) NOT NULL CHECK (source IN ('instagram_webhook', 'instagram_poll', 'simulated', 'market', 'payment', 'wallet')),
+    source              VARCHAR(24) NOT NULL CHECK (source IN ('instagram_webhook', 'instagram_poll', 'simulated', 'muse_bridge', 'market', 'payment', 'wallet')),
     kind                VARCHAR(32) NOT NULL CHECK (kind IN ('comment', 'listing_created', 'listing_cancelled', 'checkout_locked', 'payment_settled', 'token_transferred', 'lot_ad_set')),
     payload             JSONB NOT NULL
 );

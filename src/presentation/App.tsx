@@ -16,6 +16,7 @@ import { useSession } from './hooks/useSession.js';
 import { BrandLockup } from './components/BrandLockup.js';
 import { CinematicOverlay } from './components/CinematicOverlay.js';
 import { AvatarsEnabled } from './components/Identity.js';
+import { HomeSearch } from './components/HomeSearch.js';
 import { JoinCard } from './components/JoinCard.js';
 import { Leaderboard } from './components/Leaderboard.js';
 import { LiveFeed } from './components/LiveFeed.js';
@@ -203,6 +204,18 @@ export const App: React.FC = () => {
     engineRef.current?.highlight(null);
   }, []);
 
+  const showHome = (detail: PropertyDetailDto): void => {
+    setMobilePanel(null);
+    setView('city');
+    const key = engineRef.current?.focusHome(detail);
+    if (key) {
+      // The fly takes under a second; the chunk has to be in memory when it lands.
+      void store.show([key]).catch((err: unknown) => console.warn('[fanation] home chunk failed', err));
+    }
+    // The ring and the status line are the answer. The deed opens when the house itself is tapped.
+    setSelection(null);
+  };
+
   const focusPlot = (plotIndex: number): void => {
     setSelection({ kind: 'plot', plotIndex });
     setMobilePanel(null);
@@ -217,7 +230,7 @@ export const App: React.FC = () => {
       <AvatarsEnabled.Provider value={config?.avatars ?? false}>
         <div className="app app--cinematic">
           <div ref={viewportRef} className="viewport" />
-          {summary && <CinematicOverlay world={summary} />}
+          {summary && <CinematicOverlay world={summary} capture={MANUAL_FRAMES} />}
         </div>
       </AvatarsEnabled.Provider>
     );
@@ -313,6 +326,8 @@ export const App: React.FC = () => {
             </button>
           )}
         </nav>
+
+        <HomeSearch onFound={showHome} />
 
         {error && <p className="glass notice notice--danger toast">{error}</p>}
         {reorganized && !error && (

@@ -19,6 +19,7 @@
  *   POST /api/v1/ads/requests         a partner books a placement → quote, pending review
  *   GET  /api/v1/admin/ads            admin: every campaign (Bearer FANATION_ADMIN_TOKEN)
  *   POST /api/v1/admin/ads/:id/approve|reject  admin: review a campaign
+ *   POST /api/v1/bridge/muse          local Muse dump (Bearer FANATION_BRIDGE_SECRET)
  *   GET  /*                           built frontend from `dist/` when present
  */
 
@@ -38,6 +39,7 @@ import { AvatarService } from '../instagram/avatarService.js';
 import { OfferError, OfferService } from '../market/offerService.js';
 import { header, HttpError, JSON_BODY_LIMIT, parseJson, readRawBody, sendError, sendJson } from './httpKit.js';
 import { handleWalletRoute, requireAppClient, requireSession, WalletContext } from './walletRoutes.js';
+import { parseMuseBatch } from '../instagram/museBridge.js';
 import { parseMetaCommentWebhook, resolveSubscriptionChallenge, verifyHmacSha256Hex, verifyMetaSignature } from '../instagram/metaWebhook.js';
 import {
   buildCheckoutInstructions,
@@ -105,6 +107,17 @@ export function createFanationServer(config: AppConfig, services: FanationServic
     const expected = createHash('sha256').update(`Bearer ${config.adminToken}`).digest();
     if (!timingSafeEqual(given, expected)) {
       throw new HttpError(401, 'UNAUTHORIZED', 'Admin token required.');
+    }
+  }
+
+  function requireBridge(req: IncomingMessage): void {
+    if (!config.bridgeSecret) {
+      throw new HttpError(404, 'NOT_FOUND', 'Route not found.');
+    }
+    const given = createHash('sha256').update(header(req, 'authorization') ?? '').digest();
+    const expected = createHash('sha256').update(`Bearer ${config.bridgeSecret}`).digest();
+    if (!timingSafeEqual(given, expected)) {
+      throw new HttpError(401, 'UNAUTHORIZED', 'Bridge token required.');
     }
   }
 
@@ -380,6 +393,33 @@ export function createFanationServer(config: AppConfig, services: FanationServic
             const raw = await readRawBody(req, JSON_BODY_LIMIT);
             const result = handlePaymentCallback(raw, header(req, 'x-fanation-signature'));
             sendJson(res, result.status, result.body);
+            return;
+          }
+
+          case 'POST /api/v1/bridge/muse': {
+            requireBridge(req);
+            const parsed = parseMuseBatch(parseJson(await readRawBody(req, JSON_BODY_LIMIT)));
+            if (!parsed.ok) {
+              throw new HttpError(400, 'INVALID_MUSE_BATCH', parsed.error);
+            }
+            const outcomes = city.ingestComments(parsed.events, 'muse_bridge');
+            const tally = { minted: 0, points: 0, rejected: 0 };
+            for (const outcome of outcomes) {
+              if (outcome.status === 'MINTED_NEW_LAND') {
+                tally.minted += 1;
+              } else if (outcome.status === 'ENGAGEMENT_POINTS_ONLY') {
+                tally.points += 1;
+              } else {
+                tally.rejected += 1;
+              }
+            }
+            sendJson(res, 200, {
+              mediaId: parsed.mediaId,
+              received: parsed.events.length,
+              applied: outcomes.length,
+              ...tally,
+              version: city.currentVersion,
+            });
             return;
           }
 

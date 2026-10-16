@@ -24,7 +24,9 @@ function loadDevSecrets() {
 if (existsSync('.env')) {
   process.loadEnvFile('.env');
 }
-const env = { ...process.env, FANATION_DEMO: process.env.FANATION_DEMO ?? '1' };
+// The toy turns the demo book on. A live Instagram collector must not.
+const liveInstagram = process.env.FANATION_COMMENT_SOURCE === 'instagram';
+const env = { ...process.env, FANATION_DEMO: process.env.FANATION_DEMO ?? (liveInstagram ? '0' : '1') };
 for (const [name, value] of Object.entries(loadDevSecrets())) {
   env[name] ??= value;
 }
