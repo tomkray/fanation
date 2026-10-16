@@ -1,93 +1,27 @@
 /**
- * Não É Um Fã mark: golden-angle spiral city DNA + meme shield
- * (UFO saucer that reads as a chupeta / pacifier).
- *
- *   node scripts/generate-brand.mjs  →  public/brand/*.svg, public/favicon.svg
+ * The Creator's anonymous avatar and pixel sunglasses, rebuilt in the existing
+ * vector brand system. One source keeps the header, legacy path and favicon aligned.
+ * Run: node scripts/generate-brand.mjs
  */
-
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const GOLDEN_ANGLE = (137.50776405003785 * Math.PI) / 180;
-const ACCENT = '#2997FF';
-const ACCENT_SOFT = '#64D2FF';
-const GENESIS = '#FFFFFF';
-const TILE = '#0B0B0F';
-const SAUCER = '#1C1C22';
-const DOME = '#E8F4FF';
-
-function round(value) {
-  return Math.round(value * 100) / 100;
+function markSvg(size) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512" role="img" aria-label="naoeumfa.com">
+  <defs><clipPath id="badge"><circle cx="256" cy="256" r="256"/></clipPath></defs>
+  <g clip-path="url(#badge)">
+    <circle cx="256" cy="256" r="256" fill="#45494E"/>
+    <circle cx="256" cy="234" r="92" fill="#E4E8E7"/>
+    <path d="M76 512C88 408 162 356 256 356s168 52 180 156Z" fill="#E4E8E7"/>
+    <path d="M144 208h224v16h-8v16h-8v16h-72v-8h-8v-24h-24v24h-8v8h-72v-16h-8v-16h-8v-16Z" fill="#08090B"/>
+    <path d="M160 216h8v8h-8zm16 0h8v8h-8zm-8 8h8v8h-8zm16 0h8v8h-8zm-8 8h8v8h-8zm16 0h8v8h-8zm8 8h8v8h-8zM280 216h8v8h-8zm16 0h8v8h-8zm-8 8h8v8h-8zm16 0h8v8h-8zm-8 8h8v8h-8zm16 0h8v8h-8zm8 8h8v8h-8z" fill="#FFFFFF"/>
+  </g>
+</svg>
+`;
 }
-
-function spiralDots({ count, cx, cy, spacing, offset, maxDot, minDot }) {
-  const dots = [];
-  for (let n = 1; n <= count; n += 1) {
-    const radius = offset + spacing * Math.sqrt(n);
-    const angle = n * GOLDEN_ANGLE;
-    const t = n / count;
-    dots.push(
-      `<circle cx="${round(cx + radius * Math.cos(angle))}" cy="${round(cy + radius * Math.sin(angle))}" ` +
-        `r="${round(maxDot - (maxDot - minDot) * t)}" fill="${ACCENT}" fill-opacity="${round(1 - 0.72 * t)}"/>`
-    );
-  }
-  return dots.join('');
-}
-
-/** Pacifier-UFO: dome nipple + saucer disc + soft landing lights. */
-function ufoMark(cx, cy, scale) {
-  const s = scale;
-  const domeR = 11 * s;
-  const discRx = 28 * s;
-  const discRy = 8 * s;
-  const rimY = cy + 2 * s;
-  return (
-    `<ellipse cx="${round(cx)}" cy="${round(rimY)}" rx="${round(discRx)}" ry="${round(discRy)}" fill="${SAUCER}"/>` +
-    `<ellipse cx="${round(cx)}" cy="${round(rimY)}" rx="${round(discRx)}" ry="${round(discRy)}" fill="none" stroke="${ACCENT}" stroke-width="${round(2.2 * s)}"/>` +
-    `<path d="M ${round(cx - domeR * 0.95)} ${round(rimY - 1 * s)} A ${round(domeR)} ${round(domeR * 1.05)} 0 0 1 ${round(cx + domeR * 0.95)} ${round(rimY - 1 * s)} Z" fill="${DOME}"/>` +
-    `<circle cx="${round(cx)}" cy="${round(rimY - domeR * 0.55)}" r="${round(3.2 * s)}" fill="${ACCENT_SOFT}" fill-opacity="0.85"/>` +
-    `<circle cx="${round(cx - 16 * s)}" cy="${round(rimY + 1 * s)}" r="${round(1.8 * s)}" fill="${ACCENT}"/>` +
-    `<circle cx="${round(cx)}" cy="${round(rimY + 2.5 * s)}" r="${round(1.8 * s)}" fill="${GENESIS}"/>` +
-    `<circle cx="${round(cx + 16 * s)}" cy="${round(rimY + 1 * s)}" r="${round(1.8 * s)}" fill="${ACCENT}"/>`
-  );
-}
-
-function markSvg({ size, count, spacing, offset, maxDot, minDot, cornerRadius, ufoScale }) {
-  const c = size / 2;
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="Não É Um Fã">` +
-    `<rect width="${size}" height="${size}" rx="${cornerRadius}" fill="${TILE}"/>` +
-    spiralDots({ count, cx: c, cy: c, spacing, offset, maxDot, minDot }) +
-    ufoMark(c, c - size * 0.02, ufoScale) +
-    `</svg>\n`
-  );
-}
-
 const outDir = path.resolve('public/brand');
 mkdirSync(outDir, { recursive: true });
-
-const mark = markSvg({
-  size: 512,
-  count: 72,
-  spacing: 20,
-  offset: 48,
-  maxDot: 12,
-  minDot: 5,
-  cornerRadius: 114,
-  ufoScale: 5.2,
-});
-const favicon = markSvg({
-  size: 64,
-  count: 16,
-  spacing: 5.2,
-  offset: 10,
-  maxDot: 2.6,
-  minDot: 1.6,
-  cornerRadius: 14,
-  ufoScale: 0.72,
-});
-
-writeFileSync(path.join(outDir, 'naoeumfa-mark.svg'), mark);
-writeFileSync(path.join(outDir, 'fanation-mark.svg'), mark); // legacy path until all refs migrate
-writeFileSync(path.resolve('public/favicon.svg'), favicon);
-console.log('brand: public/brand/naoeumfa-mark.svg (+ legacy fanation-mark.svg), public/favicon.svg');
+writeFileSync(path.join(outDir, 'naoeumfa-mark.svg'), markSvg(512));
+writeFileSync(path.join(outDir, 'fanation-mark.svg'), markSvg(512));
+writeFileSync(path.resolve('public/favicon.svg'), markSvg(64));
+console.log('brand: avatar mark, legacy alias and favicon generated');
