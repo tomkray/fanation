@@ -27,8 +27,9 @@ comment (Muse JSON | Graph poll | webhook)
 ```
 
 When the Creator asks to “do it manually”, you still use this tube:
-`npm run muse:ingest` only. Do **not** run a separate avatar product step
-unless `refresh` failed and you must inject CDN bytes via `avatars.seed` /
+`npm run muse:ingest` only. The bridge **refreshes fan+idol avatars before
+it answers** (same `AvatarService` as Graph). Only if the response lists
+`avatars.missing` may you inject CDN bytes via `avatars.seed` /
 `npm run avatar:seed` (same cache, escape hatch only).
 
 ## Doors (not forks)

@@ -5,7 +5,7 @@
 
 export const config = { runtime: 'edge' };
 
-const CITY_ORIGIN = (typeof process !== 'undefined' && process.env.FANATION_CITY_ORIGIN?.trim()) || 'https://did-cam-diameter-bill.trycloudflare.com';
+const CITY_ORIGIN = (typeof process !== 'undefined' && process.env.FANATION_CITY_ORIGIN?.trim()) || 'https://designs-royal-drink-bar.trycloudflare.com';
 
 const HOP_BY_HOP = new Set([
   'connection',

@@ -428,14 +428,27 @@ export function createFanationServer(config: AppConfig, services: FanationServic
                 portraits.push(outcome.land.minterHandle, outcome.idol.minterHandle, outcome.land.ownerHandle);
               }
             }
-            if (portraits.length > 0) {
-              avatars.enqueue(portraits);
+            // Same portrait pipeline as the live poller: enqueue + refresh now so
+            // Muse feels identical to Graph (faces land before the HTTP answer).
+            const uniquePortraits = [...new Set(portraits)];
+            if (uniquePortraits.length > 0) {
+              avatars.enqueue(uniquePortraits);
+            }
+            const avatarOk: string[] = [];
+            const avatarMissing: string[] = [];
+            for (const handle of uniquePortraits) {
+              if (avatars.read(handle) || (await avatars.refresh(handle))) {
+                avatarOk.push(handle);
+              } else {
+                avatarMissing.push(handle);
+              }
             }
             sendJson(res, 200, {
               mediaId: parsed.mediaId,
               received: parsed.events.length,
               applied: outcomes.length,
               ...tally,
+              avatars: { ok: avatarOk, missing: avatarMissing },
               version: city.currentVersion,
             });
             return;
