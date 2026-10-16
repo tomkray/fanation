@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "fanation-megatower-twist-v1",
+  "kind": "static-prop",
+  "prompt": "A superstar supertall tower: a gently twisting glass tower in teal and white, sky gardens every few floors, a glowing crown and a spire. Stylized cartoon game asset in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, slightly exaggerated proportions, hand-painted textures, vibrant natural colours, clean readable silhouette from a high three-quarter camera. Single object only on a flat square base no larger than its footprint, no terrain, no people, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
+  "faceLimit": 15000,
+  "seed": 1171,
+  "referenceNotes": "Fanation catalogue (tower \u00b7 MEGATOWER). 16 m lot; ~15 m footprint; ~180 m tall. No world placement is authorized by this brief."
+}

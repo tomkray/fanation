@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "fanation-bus-v1",
+  "kind": "static-prop",
+  "prompt": "A cheerful double-decker city bus with rounded edges and big windows. Stylized cartoon game prop in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, hand-painted textures, vibrant natural colours, readable from a high three-quarter camera. Single object only, no ground, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
+  "faceLimit": 4000,
+  "seed": 1213,
+  "referenceNotes": "Fanation catalogue (prop \u00b7 CAR). No world placement is authorized by this brief."
+}

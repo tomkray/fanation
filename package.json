@@ -1,0 +1,50 @@
+{
+  "name": "fanation-club",
+  "version": "1.1.0",
+  "description": "Fanation Club (fanation.club) — isometric 3D fan nation city, Instagram comment minting, fandom championship, PIX/crypto marketplace and AI video agent",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:live": "npm run assets:draco && FANATION_COMMENT_SOURCE=instagram node scripts/dev.mjs",
+    "instagram:check": "tsx scripts/instagram-check.ts",
+    "growth:preview": "tsx scripts/growth-preview.ts",
+    "dev:api": "tsx watch src/infrastructure/http/main.ts",
+    "dev:web": "vite",
+    "start:api": "tsx src/infrastructure/http/main.ts",
+    "build": "npm run assets:draco && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "simulate:webhook": "tsx scripts/simulate-webhook.ts",
+    "brand": "node scripts/generate-brand.mjs",
+    "assets:draco": "node scripts/copy-draco.mjs",
+    "assets:blender": "blender --background --python tools/blender/generate_tier_models.py",
+    "agent:setup": "python3 -m venv agent/.venv && agent/.venv/bin/pip install -r agent/requirements.txt",
+    "agent:render": "agent/.venv/bin/python agent/ai_video_agent.py --once --dry-run",
+    "agent:hourly": "agent/.venv/bin/python agent/ai_video_agent.py --every-minutes 60",
+    "screens": "agent/.venv/bin/python tools/capture_screens.py",
+    "predev": "npm run assets:draco",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.170.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

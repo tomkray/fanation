@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "fanation-sports-arena-v1",
+  "kind": "static-prop",
+  "prompt": "A landmark sports arena for a star athlete: a sleek dome with an orange basketball-like roof pattern, a giant trophy statue at the entrance, flag poles. Stylized cartoon game asset in the spirit of premium Apple Arcade city builders and Pixar-like toy worlds: chunky soft-beveled shapes, slightly exaggerated proportions, hand-painted textures, vibrant natural colours, clean readable silhouette from a high three-quarter camera. Single object only on a flat square base no larger than its footprint, no terrain, no people, no text, no logos, neutral lighting without baked shadows. Game-ready economical topology, textured PBR.",
+  "faceLimit": 15000,
+  "seed": 1183,
+  "referenceNotes": "Fanation catalogue (landmark \u00b7 SPORTS). 48 m block. No world placement is authorized by this brief."
+}

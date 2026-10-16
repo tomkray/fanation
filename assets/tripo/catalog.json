@@ -1,0 +1,258 @@
+{
+  "version": 1,
+  "artDirection": "Apple Arcade / Pixar-like stylized toy city",
+  "assets": [
+    {
+      "id": "fanation-cottage-v1",
+      "role": "home",
+      "slot": "COTTAGE",
+      "faceLimit": 6000,
+      "pilot": true
+    },
+    {
+      "id": "fanation-cottage-cabin-v1",
+      "role": "home",
+      "slot": "COTTAGE",
+      "faceLimit": 6000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-cottage-beach-v1",
+      "role": "home",
+      "slot": "COTTAGE",
+      "faceLimit": 6000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-house-suburban-v1",
+      "role": "home",
+      "slot": "HOUSE",
+      "faceLimit": 7000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-house-brick-v1",
+      "role": "home",
+      "slot": "HOUSE",
+      "faceLimit": 7000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-house-aframe-v1",
+      "role": "home",
+      "slot": "HOUSE",
+      "faceLimit": 7000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-townhouse-row-v1",
+      "role": "home",
+      "slot": "TOWNHOUSE",
+      "faceLimit": 8000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-townhouse-cafe-v1",
+      "role": "home",
+      "slot": "TOWNHOUSE",
+      "faceLimit": 8000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-townhouse-duplex-v1",
+      "role": "home",
+      "slot": "TOWNHOUSE",
+      "faceLimit": 8000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-villa-v1",
+      "role": "home",
+      "slot": "VILLA",
+      "faceLimit": 8000,
+      "pilot": true
+    },
+    {
+      "id": "fanation-villa-med-v1",
+      "role": "home",
+      "slot": "VILLA",
+      "faceLimit": 8000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-villa-glass-v1",
+      "role": "home",
+      "slot": "VILLA",
+      "faceLimit": 8000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-apartment-tower-v1",
+      "role": "tower",
+      "slot": "TOWER",
+      "faceLimit": 10000,
+      "pilot": true
+    },
+    {
+      "id": "fanation-office-tower-v1",
+      "role": "tower",
+      "slot": "TOWER",
+      "faceLimit": 10000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-skyscraper-glass-v1",
+      "role": "tower",
+      "slot": "SKYSCRAPER",
+      "faceLimit": 12000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-skyscraper-deco-v1",
+      "role": "tower",
+      "slot": "SKYSCRAPER",
+      "faceLimit": 12000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-megatower-twist-v1",
+      "role": "tower",
+      "slot": "MEGATOWER",
+      "faceLimit": 15000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-megatower-spire-v1",
+      "role": "tower",
+      "slot": "MEGATOWER",
+      "faceLimit": 15000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-music-arena-v1",
+      "role": "landmark",
+      "slot": "MUSIC",
+      "faceLimit": 15000,
+      "pilot": true
+    },
+    {
+      "id": "fanation-music-hall-v1",
+      "role": "landmark",
+      "slot": "MUSIC",
+      "faceLimit": 15000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-sports-stadium-v1",
+      "role": "landmark",
+      "slot": "SPORTS",
+      "faceLimit": 15000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-sports-arena-v1",
+      "role": "landmark",
+      "slot": "SPORTS",
+      "faceLimit": 15000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-creator-studio-v1",
+      "role": "landmark",
+      "slot": "CREATORS",
+      "faceLimit": 15000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-creator-dome-v1",
+      "role": "landmark",
+      "slot": "CREATORS",
+      "faceLimit": 15000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-community-hall-v1",
+      "role": "landmark",
+      "slot": "COMMUNITY",
+      "faceLimit": 15000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-community-pavilion-v1",
+      "role": "landmark",
+      "slot": "COMMUNITY",
+      "faceLimit": 15000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-tree-round-v1",
+      "role": "prop",
+      "slot": "TREE",
+      "faceLimit": 2500,
+      "pilot": false
+    },
+    {
+      "id": "fanation-tree-pine-v1",
+      "role": "prop",
+      "slot": "TREE",
+      "faceLimit": 2500,
+      "pilot": false
+    },
+    {
+      "id": "fanation-palm-v1",
+      "role": "prop",
+      "slot": "TREE",
+      "faceLimit": 2500,
+      "pilot": false
+    },
+    {
+      "id": "fanation-car-compact-v1",
+      "role": "prop",
+      "slot": "CAR",
+      "faceLimit": 3000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-car-van-v1",
+      "role": "prop",
+      "slot": "CAR",
+      "faceLimit": 3000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-bus-v1",
+      "role": "prop",
+      "slot": "CAR",
+      "faceLimit": 4000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-street-lamp-v1",
+      "role": "prop",
+      "slot": "LAMP",
+      "faceLimit": 1500,
+      "pilot": false
+    },
+    {
+      "id": "fanation-bench-v1",
+      "role": "prop",
+      "slot": "BENCH",
+      "faceLimit": 1500,
+      "pilot": false
+    },
+    {
+      "id": "fanation-fountain-v1",
+      "role": "prop",
+      "slot": "FOUNTAIN",
+      "faceLimit": 4000,
+      "pilot": false
+    },
+    {
+      "id": "fanation-zeppelin-v1",
+      "role": "prop",
+      "slot": "ZEPPELIN",
+      "faceLimit": 6000,
+      "pilot": false
+    }
+  ]
+}
