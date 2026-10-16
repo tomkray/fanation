@@ -1,12 +1,12 @@
 """
-Fanation Club — autonomous media agent.
+Não É Um Fã — autonomous media agent.
 
 Each cycle:
   1. reads the live city and the global ranking from the API;
   2. renders a deterministic 9:16 (1080x1920) take of the 3D city focused on
      the #1 fandom, frame by frame, and encodes it with FFmpeg (H.264);
   3. writes a caption with the call to action and the biggest climber;
-  4. publishes to Instagram Reels (@fanation.club) and TikTok when credentials
+  4. publishes to Instagram Reels (@naoeumfa) and TikTok when credentials
      exist, otherwise records an honest dry-run (no fake ids).
 
   agent/.venv/bin/python agent/ai_video_agent.py --once [--dry-run]
@@ -146,7 +146,7 @@ def compose_caption(snapshot: CitySnapshot) -> str:
     return (
         f"🏙️ Fanation already has {snapshot.total_homes} homes built by fans.\n\n"
         f"{rivalry}{climb}\n\n"
-        "👇 Comment your idol's @ to move in next to them + your $FANT pack (packs halve as the planet grows).\n"
+        "👇 Comment your idol's @ to move in next to them + your $NEFA pack (packs halve as the planet grows).\n"
         "Anyone can be an idol: get fans and your home grows into a tower.\n\n"
         "#FanationClub #FandomRanking #Fandom #fanation"
     )
@@ -326,7 +326,7 @@ async def run_cycle(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fanation Club media agent")
+    parser = argparse.ArgumentParser(description="Não É Um Fã media agent")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--once", action="store_true", help="run a single cycle (default)")
     mode.add_argument("--every-minutes", type=int, help="run forever, one cycle every N minutes")

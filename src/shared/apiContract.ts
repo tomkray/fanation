@@ -166,7 +166,7 @@ export interface RankChangeDto {
   readonly toRank: number;
 }
 
-/** A person in the user rankings (by XP or by $FANT). */
+/** A person in the user rankings (by XP or by $NEFA). */
 export interface UserRankDto {
   readonly handle: string;
   readonly reputationXp: number;
@@ -202,7 +202,7 @@ export type ActivityOutcome =
       readonly idolFans: number;
       readonly newFan: boolean;
       readonly xpGained: number;
-      /** $FANT the newcomer received from their joining pack (micro-units). */
+      /** $NEFA the newcomer received from their joining pack (micro-units). */
       readonly tokensGrantedMicro: string | null;
     }
   | { readonly status: 'REJECTED'; readonly code: CommentRejectionCode };
@@ -258,9 +258,9 @@ export interface WorldSummaryDto {
   readonly tokenomics: TokenomicsDto;
 }
 
-/** $FANT, live (A11): where every unit came from and what the next newcomer gets. */
+/** $NEFA, live (A11): where every unit came from and what the next newcomer gets. */
 export interface TokenomicsDto {
-  readonly symbol: 'FANT';
+  readonly symbol: 'NEFA';
   readonly maxSupplyMicro: string;
   readonly mintedMicro: string;
   readonly buckets: readonly {

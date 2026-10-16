@@ -39,19 +39,19 @@ function houseCampaign(id: string, request: AdRequest, createdAtIso: string): Ad
 
 /** What flies when a slot is unsold: it sells the slot itself. */
 function houseInventory(nowIso: string, demo: boolean): AdCampaign[] {
-  const contactEmail = 'ads@fanation.club';
+  const contactEmail = 'ads@naoeumfa.com';
   const house: AdCampaign[] = [
     houseCampaign('house_zeppelin', {
       placement: 'ZEPPELIN', city: 'ALL', days: 1, contactEmail,
-      creative: { headline: 'Your brand here', tagline: 'Zeppelins over every city · tap to book', partnerHandle: 'fanation.club', backgroundHex: '#0A1128', accentHex: '#3AD6FF' },
+      creative: { headline: 'Sua marca aqui', tagline: 'Zepelim em toda cidade · toca pra reservar', partnerHandle: 'naoeumfa', backgroundHex: '#0A1128', accentHex: '#3AD6FF' },
     }, nowIso),
     houseCampaign('house_billboard', {
       placement: 'BILLBOARD', city: 'ALL', days: 1, contactEmail,
-      creative: { headline: 'Advertise on Fanation', tagline: 'Billboards inside the cities', partnerHandle: 'fanation.club', backgroundHex: '#1A0B2E', accentHex: '#BF5AF2' },
+      creative: { headline: 'Anuncie no Não É Um Fã', tagline: 'Outdoor dentro das cidades', partnerHandle: 'naoeumfa', backgroundHex: '#1A0B2E', accentHex: '#BF5AF2' },
     }, nowIso),
     houseCampaign('house_banner', {
       placement: 'SKY_BANNER', city: 'ALL', days: 1, contactEmail,
-      creative: { headline: 'Fly your banner', tagline: 'Seen by every fan in the sky', partnerHandle: 'fanation.club', backgroundHex: '#2B1600', accentHex: '#FFD60A' },
+      creative: { headline: 'Voa tua faixa', tagline: 'Todo mundo no céu vai ver', partnerHandle: 'naoeumfa', backgroundHex: '#2B1600', accentHex: '#FFD60A' },
     }, nowIso),
   ];
   if (demo) {

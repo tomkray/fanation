@@ -28,7 +28,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     credentials: 'same-origin',
     // The server only accepts state changes carrying this header (CSRF defence; see walletRoutes).
-    headers: { 'Content-Type': 'application/json', 'X-Fanation-Client': 'web', ...(init?.headers ?? {}) },
+    headers: { 'Content-Type': 'application/json', 'X-Naoeumfa-Client': 'web', ...(init?.headers ?? {}) },
   });
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
@@ -108,7 +108,7 @@ export function centsFromInput(raw: string): string | null {
   return cents > 0n ? cents.toString() : null;
 }
 
-/** "25" / "2.5" $FANT → integer micro-units as a string. */
+/** "25" / "2.5" $NEFA → integer micro-units as a string. */
 export function microFromInput(raw: string): string | null {
   const match = /^\s*(\d{1,12})(?:[.,](\d{1,6}))?\s*$/.exec(raw);
   if (!match) {

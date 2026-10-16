@@ -87,7 +87,7 @@ const MarketBox: React.FC<{ readonly detail: PropertyDetailDto; readonly viewer:
       setAmount('');
       onChanged();
     } catch (err) {
-      setMessage({ ok: false, text: err instanceof ApiError ? err.message : 'Something went wrong.' });
+      setMessage({ ok: false, text: err instanceof ApiError ? err.message : 'Algo deu errado.' });
     } finally {
       setBusy(false);
     }
@@ -97,19 +97,19 @@ const MarketBox: React.FC<{ readonly detail: PropertyDetailDto; readonly viewer:
     <div className="market-box">
       {listing && (
         <p className="market-box__price">
-          <span className="caption">{listing.status === 'OPEN' ? 'For sale' : 'Being paid'}</span>
+          <span className="caption">{listing.status === 'OPEN' ? 'À venda' : 'Pagamento em curso'}</span>
           <strong>{formatBrlCents(listing.priceBrlCents)}</strong>
         </p>
       )}
       {mine ? (
         listing ? (
-          <button type="button" className="button button--secondary" disabled={busy || listing.status !== 'OPEN'} onClick={() => void run('Listing cancelled.', () => api.cancelListing(listing.listingId))}>
+          <button type="button" className="button button--secondary" disabled={busy || listing.status !== 'OPEN'} onClick={() => void run('Anúncio cancelado.', () => api.cancelListing(listing.listingId))}>
             Cancel listing
           </button>
         ) : (
           <span className="inline-form">
-            <input className="field__input field__input--compact" inputMode="decimal" placeholder="R$ price" aria-label="Price" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <button type="button" className="button button--primary" disabled={busy || !cents} onClick={() => cents && void run('Listed for sale.', () => api.listProperty(detail.plotIndex, cents))}>
+            <input className="field__input field__input--compact" inputMode="decimal" placeholder="Preço R$" aria-label="Preço" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <button type="button" className="button button--primary" disabled={busy || !cents} onClick={() => cents && void run('Colocado à venda.', () => api.listProperty(detail.plotIndex, cents))}>
               List now
             </button>
           </span>
@@ -122,9 +122,9 @@ const MarketBox: React.FC<{ readonly detail: PropertyDetailDto; readonly viewer:
             </button>
           )}
           <span className="inline-form">
-            <input className="field__input field__input--compact" inputMode="decimal" placeholder="R$ offer" aria-label="Offer" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <button type="button" className="button button--secondary" disabled={busy || (viewer !== null && !cents)} onClick={() => (cents || !viewer) && void run(`Offer sent to @${detail.handle}.`, () => api.makeOffer(detail.plotIndex, cents ?? '0'))}>
-              {viewer ? 'Make offer' : 'Connect to make an offer'}
+            <input className="field__input field__input--compact" inputMode="decimal" placeholder="Oferta R$" aria-label="Oferta" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <button type="button" className="button button--secondary" disabled={busy || (viewer !== null && !cents)} onClick={() => (cents || !viewer) && void run(`Oferta enviada pra @${detail.handle}.`, () => api.makeOffer(detail.plotIndex, cents ?? '0'))}>
+              {viewer ? 'Fazer oferta' : 'Entre pra fazer oferta'}
             </button>
           </span>
         </>
@@ -172,7 +172,7 @@ const LotAdBox: React.FC<{ readonly detail: PropertyDetailDto; readonly viewer: 
       }
       onChanged();
     } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : 'Could not save the billboard.');
+      setMessage(err instanceof ApiError ? err.message : 'Não deu pra salvar o outdoor.');
     } finally {
       setBusy(false);
     }
@@ -191,8 +191,8 @@ const LotAdBox: React.FC<{ readonly detail: PropertyDetailDto; readonly viewer: 
       )}
       {mine && (
         <span className="inline-form lot-ad__form">
-          <input className="field__input field__input--compact" maxLength={28} placeholder="Headline" aria-label="Lot headline" value={headline} onChange={(e) => setHeadline(e.target.value)} />
-          <input className="field__input field__input--compact" maxLength={44} placeholder="Tagline" aria-label="Lot tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} />
+          <input className="field__input field__input--compact" maxLength={28} placeholder="Manchete" aria-label="Manchete do lote" value={headline} onChange={(e) => setHeadline(e.target.value)} />
+          <input className="field__input field__input--compact" maxLength={44} placeholder="Frase" aria-label="Frase do lote" value={tagline} onChange={(e) => setTagline(e.target.value)} />
           <button type="button" className="button button--secondary" disabled={busy || headline.trim().length === 0 || tagline.trim().length === 0} onClick={() => void save(false)}>
             Post on lot
           </button>
@@ -240,8 +240,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ target, version, cit
 
   if (!detail) {
     return (
-      <FloatingWindow label="Property" accentHex="#3ad6ff" onClose={onClose} band={<span className="deed__kicker">Title deed</span>}>
-        <p className="caption">{missing ? 'Not in the city yet. Comment an idol’s @ on @fanation.club to move in.' : 'Loading…'}</p>
+      <FloatingWindow label="Imóvel" accentHex="#3ad6ff" onClose={onClose} band={<span className="deed__kicker">Escritura</span>}>
+        <p className="caption">{missing ? 'Ainda não tá na cidade. Comenta o @ do ídolo no @naoeumfa pra se mudar.' : 'Carregando…'}</p>
       </FloatingWindow>
     );
   }
@@ -255,16 +255,16 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ target, version, cit
   const ownerChanged = detail.handle !== detail.minterHandle;
   return (
     <FloatingWindow
-      label={`Home ${homeNumber(detail.plotIndex)}`}
+      label={`Casa ${homeNumber(detail.plotIndex)}`}
       accentHex={detail.colorHex}
       onClose={onClose}
       band={
         <>
           <span className="deed__kicker">
-            Title deed · {city?.name ?? detail.city}
+            Escritura · {city?.name ?? detail.city}
             {detail.idolRank !== null && ` · #${detail.idolRank} global`}
           </span>
-          <h2 className="deed__number">Home {homeNumber(detail.plotIndex)}</h2>
+          <h2 className="deed__number">Casa {homeNumber(detail.plotIndex)}</h2>
           <span className="deed__class">
             {RARITY_LABELS[look.rarity]} · {look.style.name}
             {detail.category !== 'UNLISTED' ? ` · ${CATEGORY_LABELS[detail.category]}` : ''}
@@ -277,15 +277,15 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ target, version, cit
       <div className="deed__owner">
         <Avatar handle={detail.handle} name={ownerChanged ? undefined : detail.displayName ?? undefined} colorHex={detail.colorHex} size="lg" />
         <span>
-          <span className="caption">Owner</span>
+          <span className="caption">Dono</span>
           <HandleName handle={detail.handle} name={ownerChanged ? null : detail.displayName} />
-          {ownerChanged && <span className="caption">Founded by @{detail.minterHandle}</span>}
+          {ownerChanged && <span className="caption">Fundado por @{detail.minterHandle}</span>}
           <span className="deed__bank">
-            Bank · {formatInteger(detail.ownerHomes)} home{detail.ownerHomes === 1 ? '' : 's'}
+            Banco · {formatInteger(detail.ownerHomes)} casa{detail.ownerHomes === 1 ? '' : 's'}
           </span>
         </span>
         <span className="level-badge" style={{ borderColor: detail.colorHex }}>
-          Lv {detail.level}
+          Nv {detail.level}
         </span>
       </div>
 
@@ -295,50 +295,50 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ target, version, cit
           {city?.name ?? detail.city} ·{' '}
           {detail.idolHandle ? (
             <>
-              next to{' '}
+              do lado de{' '}
               <button type="button" className="link-button link-button--inline" onClick={() => detail.idolHandle && onFocusHandle(detail.idolHandle)}>
                 @{detail.idolHandle}
               </button>
             </>
           ) : (
-            `district of @${detail.minterHandle}`
+            `distrito de @${detail.minterHandle}`
           )}{' '}
-          · block {blockX}, {blockZ}
+          · quadra {blockX}, {blockZ}
         </span>
       </p>
 
       <dl className="deed__rows">
         <div>
-          <dt>Fans</dt>
+          <dt>Fãs</dt>
           <dd>
             {formatInteger(detail.fans)}
             {nextLook && detail.nextClassAtFans !== null && (
               <span className="caption">
                 {' '}
-                · {formatInteger(detail.nextClassAtFans - detail.fans)} to {RARITY_LABELS[nextLook.rarity]} {CLASS_LABELS[nextLook.propertyClass].toLowerCase()}
+                · {formatInteger(detail.nextClassAtFans - detail.fans)} até {RARITY_LABELS[nextLook.rarity]} {CLASS_LABELS[nextLook.propertyClass].toLowerCase()}
               </span>
             )}
           </dd>
         </div>
         <div>
-          <dt>Style</dt>
+          <dt>Estilo</dt>
           <dd>
             {RARITY_LABELS[look.rarity]} · {look.style.name}
           </dd>
         </div>
         <div>
-          <dt>Owner bank</dt>
+          <dt>Banco do dono</dt>
           <dd>
-            {formatInteger(detail.ownerHomes)} home{detail.ownerHomes === 1 ? '' : 's'}
+            {formatInteger(detail.ownerHomes)} casa{detail.ownerHomes === 1 ? '' : 's'}
           </dd>
         </div>
         <div>
-          <dt>Owner reputation</dt>
+          <dt>Reputação do dono</dt>
           <dd>{formatInteger(detail.ownerReputationXp)} XP</dd>
         </div>
         <div>
           <dt>Owner balance</dt>
-          <dd>{formatMicro(detail.ownerTokenBalanceMicro, 0)} $FANT</dd>
+          <dd>{formatMicro(detail.ownerTokenBalanceMicro, 0)} $NEFA</dd>
         </div>
         {detail.neighbourhoods.length > 0 && (
           <div>

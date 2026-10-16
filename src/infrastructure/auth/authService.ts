@@ -3,7 +3,7 @@
  *
  * Instagram Login only covers business/creator accounts, so every fan proves
  * their handle the way they already use Fanation: the site shows a one-time
- * code, they comment it on any @fanation.club post, and the comment arrives
+ * code, they comment it on any @naoeumfa post, and the comment arrives
  * through Meta (signed webhook or the Graph API) with Meta's own author
  * username. A code only verifies the @ it was issued for, once, within 15
  * minutes. The browser that asked for it then receives a session.
@@ -23,7 +23,7 @@ export const SESSION_TTL_MS = 30 * 86_400_000;
 /** No 0/O, 1/I/L: the code is typed on a phone. */
 const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 const CODE_LENGTH = 6;
-const CODE_PATTERN = /FAN-([2-9A-HJ-NP-Z]{6})/gi;
+const CODE_PATTERN = /NEFA-([2-9A-HJ-NP-Z]{6})/gi;
 const MAX_PENDING_CHALLENGES = 2_000;
 const MAX_PENDING_PER_HANDLE = 3;
 const CHALLENGES_PER_CLIENT = 8;
@@ -62,7 +62,7 @@ function newCode(): string {
   for (let i = 0; i < CODE_LENGTH; i += 1) {
     code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
   }
-  return `FAN-${code}`;
+  return `NEFA-${code}`;
 }
 
 export class AuthService {
@@ -120,7 +120,7 @@ export class AuthService {
         continue;
       }
       for (const match of event.text.matchAll(CODE_PATTERN)) {
-        const challenge = this.challengeByCode.get(`FAN-${match[1].toUpperCase()}`);
+        const challenge = this.challengeByCode.get(`NEFA-${match[1].toUpperCase()}`);
         if (challenge && !challenge.verified && challenge.handle === author && nowMs < challenge.expiresAtMs) {
           challenge.verified = true;
           logger.info('auth_handle_verified', { handle: author });

@@ -4,7 +4,7 @@ import type { PropertyDetailDto } from '../../shared/apiContract.js';
 import { api, ApiError } from '../api/client.js';
 import { homeNumber } from '../format.js';
 
-/** The map's front door: type an @, and the camera flies to that house. */
+/** A porta da frente do mapa: digita um @ e a câmera voa até a casa. */
 export const HomeSearch: React.FC<{ readonly onFound: (detail: PropertyDetailDto) => void }> = ({ onFound }) => {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'idle' | 'searching' | 'found' | 'missing' | 'invalid'>('idle');
@@ -22,8 +22,8 @@ export const HomeSearch: React.FC<{ readonly onFound: (detail: PropertyDetailDto
     api
       .profile(handle)
       .then((detail) => {
-        const beside = detail.idolHandle ? `next to @${detail.idolHandle}` : 'your district';
-        setFoundLine(`Here it is. @${detail.minterHandle} · Home ${homeNumber(detail.plotIndex)} · ${beside}`);
+        const beside = detail.idolHandle ? `do lado de @${detail.idolHandle}` : 'no seu distrito';
+        setFoundLine(`Achamos. @${detail.minterHandle} · Casa ${homeNumber(detail.plotIndex)} · ${beside}`);
         setStatus('found');
         setQuery(`@${detail.minterHandle}`);
         onFound(detail);
@@ -41,13 +41,13 @@ export const HomeSearch: React.FC<{ readonly onFound: (detail: PropertyDetailDto
   return (
     <form className="home-search glass" role="search" onSubmit={submit}>
       <label className="home-search__label" htmlFor="home-search">
-        Find your house
+        Acha tua casa
       </label>
       <div className="home-search__row">
         <input
           id="home-search"
           className="field__input"
-          placeholder="@yourname"
+          placeholder="@seunome"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
@@ -62,7 +62,7 @@ export const HomeSearch: React.FC<{ readonly onFound: (detail: PropertyDetailDto
           }}
         />
         <button type="submit" className="button button--primary" disabled={status === 'searching'}>
-          {status === 'searching' ? 'Looking…' : 'Show'}
+          {status === 'searching' ? 'Procurando…' : 'Mostrar'}
         </button>
       </div>
       {status === 'found' && (
@@ -72,12 +72,12 @@ export const HomeSearch: React.FC<{ readonly onFound: (detail: PropertyDetailDto
       )}
       {status === 'missing' && (
         <p id="home-search-note" className="home-search__note" role="status">
-          @{missingHandle} has no house yet. Comment an idol&apos;s @ on a @fanation.club post.
+          @{missingHandle} ainda não tem casa. Comenta o @ do ídolo num post do @naoeumfa.
         </p>
       )}
       {status === 'invalid' && (
         <p id="home-search-note" className="home-search__note" role="status">
-          Use an Instagram @, like @yourname.
+          Usa um @ do Instagram, tipo @seunome.
         </p>
       )}
     </form>

@@ -1,6 +1,6 @@
 /**
  * Connect + wallet (A10): a code only verifies the @ that comments it, once,
- * before it expires; sessions survive a restart; $FANT transfers and listing
+ * before it expires; sessions survive a restart; $NEFA transfers and listing
  * cancellations are ledger events with integer amounts.
  */
 
@@ -27,7 +27,7 @@ describe('connect with an Instagram comment', () => {
     const file = tempFile('sessions.json');
     const auth = new AuthService(file, () => now);
     const { code, secret } = auth.createChallenge('@Alice.Fan', 'ip-1');
-    expect(code).toMatch(/^FAN-[2-9A-HJ-NP-Z]{6}$/);
+    expect(code).toMatch(/^NEFA-[2-9A-HJ-NP-Z]{6}$/);
     expect(auth.poll(secret).state).toBe('PENDING');
 
     auth.observeComments([commentBy('mallory', `${code} it's me!`, 'c1')]);
@@ -61,7 +61,7 @@ describe('connect with an Instagram comment', () => {
 });
 
 describe('wallet ledger events', () => {
-  it('sends $FANT in integers, refuses overdrafts and self-sends', () => {
+  it('sends $NEFA in integers, refuses overdrafts and self-sends', () => {
     const state = createCityState();
     applyCommentEvent(state, commentBy('ana', '@taylorswift', 'w1'));
     const send = (amount: bigint, to = 'ben') =>

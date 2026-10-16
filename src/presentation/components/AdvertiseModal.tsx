@@ -12,9 +12,9 @@ import { api } from '../api/client.js';
 import { formatBrlCents } from '../format.js';
 
 const PLACEMENT_COPY: Readonly<Record<AdPlacement, { readonly label: string; readonly where: string }>> = {
-  ZEPPELIN: { label: 'Zeppelin', where: 'Circles a city with your ad on both sides' },
-  SKY_BANNER: { label: 'Sky banner', where: 'A plane tows your banner over the districts' },
-  BILLBOARD: { label: 'Billboard', where: 'Neon billboards inside each city' },
+  ZEPPELIN: { label: 'Zepelim', where: 'Dá voltas na cidade com teu anúncio nos dois lados' },
+  SKY_BANNER: { label: 'Faixa aérea', where: 'Um avião puxa tua faixa sobre os distritos' },
+  BILLBOARD: { label: 'Outdoor', where: 'Outdoors neon dentro de cada cidade' },
 };
 
 export interface AdvertiseModalProps {
@@ -32,7 +32,7 @@ export const AdvertiseModal: React.FC<AdvertiseModalProps> = ({ ads, tapped, cit
   const [headline, setHeadline] = useState('');
   const [tagline, setTagline] = useState('');
   const [partner, setPartner] = useState('');
-  const [backgroundHex, setBackground] = useState('#0A1128');
+  const [backgroundHex, setFundo] = useState('#0A1128');
   const [accentHex, setAccent] = useState('#3AD6FF');
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,7 +57,7 @@ export const AdvertiseModal: React.FC<AdvertiseModalProps> = ({ ads, tapped, cit
         })
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send the request.');
+      setError(err instanceof Error ? err.message : 'Não deu pra enviar o pedido.');
     } finally {
       setBusy(false);
     }
@@ -65,32 +65,32 @@ export const AdvertiseModal: React.FC<AdvertiseModalProps> = ({ ads, tapped, cit
 
   return (
     <div className="modal-backdrop" onClick={busy ? undefined : onClose}>
-      <section className="glass modal modal--ads" role="dialog" aria-modal="true" aria-label="Advertise on Fanation" onClick={(e) => e.stopPropagation()}>
+      <section className="glass modal modal--ads" role="dialog" aria-modal="true" aria-label="Anuncie no Não É Um Fã" onClick={(e) => e.stopPropagation()}>
         <header className="modal__header">
           <div>
-            <span className="eyebrow">Partners · in-game ads</span>
-            <h2 className="title-md">Advertise on Fanation</h2>
+            <span className="eyebrow">Parceiros · anúncios no jogo</span>
+            <h2 className="title-md">Anuncie no Não É Um Fã</h2>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close" disabled={busy}>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar" disabled={busy}>
             ×
           </button>
         </header>
 
         {tapped && !tapped.house && (
           <p className="caption">
-            You tapped an ad by <strong>@{tapped.partnerHandle}</strong>. Your brand can fly here too.
+            Você tocou num anúncio de <strong>@{tapped.partnerHandle}</strong>. Tua marca também pode voar aqui.
           </p>
         )}
 
         {receipt ? (
           <div className="checkout checkout--done">
-            <span className="badge badge--success">Request received</span>
+            <span className="badge badge--success">Pedido recebido</span>
             <p className="title-sm">
-              {PLACEMENT_COPY[receipt.placement].label} · {receipt.days} days · {formatBrlCents(receipt.quoteBrlCents)}
+              {PLACEMENT_COPY[receipt.placement].label} · {receipt.days} dias · {formatBrlCents(receipt.quoteBrlCents)}
             </p>
             <p className="caption">
-              Reference <span className="mono">{receipt.id}</span>. Our team reviews every creative within 24 h; once approved we send the PIX or crypto
-              payment details and your ad takes off.
+              Referência <span className="mono">{receipt.id}</span>. A gente revisa cada criativo em até 24 h; aprovado, manda o PIX ou crypto
+              e o anúncio decola.
             </p>
             <button type="button" className="button button--primary" onClick={onClose}>
               Done
@@ -98,7 +98,7 @@ export const AdvertiseModal: React.FC<AdvertiseModalProps> = ({ ads, tapped, cit
           </div>
         ) : (
           <form className="ads-form" onSubmit={(e) => void submit(e)}>
-            <div className="rate-card" role="radiogroup" aria-label="Placement">
+            <div className="rate-card" role="radiogroup" aria-label="Formato">
               {(ads?.rateCard ?? []).map((r) => (
                 <button
                   key={r.placement}
@@ -110,38 +110,38 @@ export const AdvertiseModal: React.FC<AdvertiseModalProps> = ({ ads, tapped, cit
                 >
                   <strong>{PLACEMENT_COPY[r.placement].label}</strong>
                   <span className="caption">{PLACEMENT_COPY[r.placement].where}</span>
-                  <span className="rate-card__price">{formatBrlCents(r.centsPerDay)} / day</span>
+                  <span className="rate-card__price">{formatBrlCents(r.centsPerDay)} / dia</span>
                 </button>
               ))}
             </div>
 
-            <div className="ad-preview" style={{ backgroundColor: backgroundHex, borderColor: accentHex }} aria-label="Preview">
-              <strong style={{ textShadow: `0 0 16px ${accentHex}` }}>{headline || 'Your headline'}</strong>
-              <span>{tagline || 'Your tagline'}</span>
-              <span style={{ color: accentHex }}>@{partner.replace(/^@/, '') || 'your_brand'} · Sponsored</span>
+            <div className="ad-preview" style={{ backgroundColor: backgroundHex, borderColor: accentHex }} aria-label="Prévia">
+              <strong style={{ textShadow: `0 0 16px ${accentHex}` }}>{headline || 'Sua manchete'}</strong>
+              <span>{tagline || 'Sua frase'}</span>
+              <span style={{ color: accentHex }}>@{partner.replace(/^@/, '') || 'sua_marca'} · Patrocinado</span>
             </div>
 
             <div className="ads-form__grid">
               <label className="field">
-                <span className="caption">Headline ({AD_HEADLINE_MAX} max)</span>
+                <span className="caption">Manchete ({AD_HEADLINE_MAX} max)</span>
                 <input className="field__input" value={headline} maxLength={AD_HEADLINE_MAX} required onChange={(e) => setHeadline(e.target.value)} />
               </label>
               <label className="field">
-                <span className="caption">Tagline ({AD_TAGLINE_MAX} max)</span>
+                <span className="caption">Frase ({AD_TAGLINE_MAX} max)</span>
                 <input className="field__input" value={tagline} maxLength={AD_TAGLINE_MAX} required onChange={(e) => setTagline(e.target.value)} />
               </label>
               <label className="field">
-                <span className="caption">Brand Instagram @ (printed on the ad)</span>
-                <input className="field__input" value={partner} placeholder="@your_brand" required autoCapitalize="none" onChange={(e) => setPartner(e.target.value)} />
+                <span className="caption">@ do Instagram da marca (sai no anúncio)</span>
+                <input className="field__input" value={partner} placeholder="@sua_marca" required autoCapitalize="none" onChange={(e) => setPartner(e.target.value)} />
               </label>
               <label className="field">
-                <span className="caption">Contact e-mail (private)</span>
+                <span className="caption">E-mail de contato (privado)</span>
                 <input className="field__input" type="email" value={email} required onChange={(e) => setEmail(e.target.value)} />
               </label>
               <label className="field">
-                <span className="caption">City</span>
+                <span className="caption">Cidade</span>
                 <select className="field__input" value={city} onChange={(e) => setCity(e.target.value as AdCity)}>
-                  <option value="ALL">Every city</option>
+                  <option value="ALL">Todas as cidades</option>
                   {cities.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -150,7 +150,7 @@ export const AdvertiseModal: React.FC<AdvertiseModalProps> = ({ ads, tapped, cit
                 </select>
               </label>
               <label className="field">
-                <span className="caption">Days (1–{AD_MAX_DAYS})</span>
+                <span className="caption">Dias (1–{AD_MAX_DAYS})</span>
                 <input
                   className="field__input"
                   type="number"
@@ -161,11 +161,11 @@ export const AdvertiseModal: React.FC<AdvertiseModalProps> = ({ ads, tapped, cit
                 />
               </label>
               <label className="field field--color">
-                <span className="caption">Background</span>
-                <input type="color" value={backgroundHex} onChange={(e) => setBackground(e.target.value.toUpperCase())} />
+                <span className="caption">Fundo</span>
+                <input type="color" value={backgroundHex} onChange={(e) => setFundo(e.target.value.toUpperCase())} />
               </label>
               <label className="field field--color">
-                <span className="caption">Neon accent</span>
+                <span className="caption">Neon</span>
                 <input type="color" value={accentHex} onChange={(e) => setAccent(e.target.value.toUpperCase())} />
               </label>
             </div>
@@ -174,7 +174,7 @@ export const AdvertiseModal: React.FC<AdvertiseModalProps> = ({ ads, tapped, cit
             <footer className="ads-form__footer">
               <span className="title-sm">{quote ? formatBrlCents(quote) : '—'}</span>
               <button type="submit" className="button button--primary" disabled={busy || !quote}>
-                {busy ? 'Sending…' : 'Request this placement'}
+                {busy ? 'Enviando…' : 'Pedir esse formato'}
               </button>
             </footer>
           </form>

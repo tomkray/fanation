@@ -1,5 +1,5 @@
 /**
- * Fanation Club — dark glass, Apple HIG proportions, 8pt grid (Axiom A6).
+ * Não É Um Fã — dark glass, Apple HIG proportions, 8pt grid (Axiom A6).
  * Every spacing value comes from the --space-* scale; touch targets ≥ 44px.
  */
 
@@ -193,9 +193,9 @@ ul {
 
 .brand-lockup__word {
   font-family: var(--font-display);
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.35px;
 }
 
 .brand-lockup__tld {
@@ -1247,7 +1247,7 @@ button.feed__button:hover {
   }
 }
 
-/* ---------- $FANT tokenomics ---------- */
+/* ---------- $NEFA tokenomics ---------- */
 
 .modal--tokenomics {
   width: min(680px, 100%);

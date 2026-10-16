@@ -47,7 +47,7 @@ const MINT_TEMPLATES = [
   (fan: string, fandom: string) => `@${fan} @${fandom} straight to #1`,
   (fan: string, fandom: string) => `@${fan}_bestie come live next to @${fandom}!`,
 ];
-const OFF_FORMAT_TEXTS = ['love this!!', 'how do I join?', '😍😍😍', 'first!', '@fanation.club this is so cool'];
+const OFF_FORMAT_TEXTS = ['love this!!', 'how do I join?', '😍😍😍', 'first!', '@naoeumfa this is so cool'];
 /** Early fans who can become idols themselves, and how often a newcomer picks one. */
 const RISING_STAR_POOL = 15;
 const RISING_STAR_SHARE = 0.22;

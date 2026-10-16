@@ -14,7 +14,7 @@ function priceOf(listing: ListingDto, method: PaymentMethod): string {
 function listingTitle(listing: ListingDto): string {
   return listing.assetType === 'LAND_PLOT'
     ? `Land #${listing.plotIndex}`
-    : `${formatMicro(listing.tokenAmountMicro ?? '0', 0)} $FANT pack`;
+    : `${formatMicro(listing.tokenAmountMicro ?? '0', 0)} $NEFA pack`;
 }
 
 export interface MarketplaceModalProps {
@@ -114,22 +114,22 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({ listings, co
         className="glass modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Fanation marketplace"
+        aria-label="Mercado Não É Um Fã"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="modal__header">
           <div>
-            <span className="eyebrow">P2P marketplace · escrow</span>
-            <h2 className="title-md">Lands &amp; $FANT</h2>
+            <span className="eyebrow">Mercado P2P · escrow</span>
+            <h2 className="title-md">Terrenos &amp; $NEFA</h2>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close">
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar">
             ×
           </button>
         </header>
 
         {checkout === null && (
           <>
-            <div className="segmented" role="radiogroup" aria-label="Payment method">
+            <div className="segmented" role="radiogroup" aria-label="Forma de pagamento">
               {METHODS.map((m) => (
                 <button
                   key={m}
@@ -151,7 +151,7 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({ listings, co
               </p>
             ) : (
               <button type="button" className="button button--secondary" onClick={onConnect}>
-                Connect your Instagram to buy
+                Conecta teu Instagram pra comprar
               </button>
             )}
             {error && <p className="notice notice--danger">{error}</p>}

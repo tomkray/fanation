@@ -39,7 +39,7 @@ export interface CityLedgerConfig {
    * Part of the replay contract: the same journal with the same epoch gives the same map.
    */
   readonly layoutEpochMs: number | null;
-  /** Comment-time length of a $FANT season (A11); null disables season payouts. Part of the replay contract. */
+  /** Comment-time length of a $NEFA season (A11); null disables season payouts. Part of the replay contract. */
   readonly seasonLengthMs: number | null;
 }
 
@@ -56,7 +56,7 @@ export interface SeasonResult {
   readonly top: readonly { readonly handle: string; readonly micro: bigint }[];
 }
 
-/** Where every $FANT came from; locked buckets are never minted by the game. */
+/** Where every $NEFA came from; locked buckets are never minted by the game. */
 export interface TokenomicsState {
   fanMintedMicro: bigint;
   /** Packs issued so far; the next newcomer is member number `members`. */
@@ -71,7 +71,7 @@ export interface TokenomicsState {
   lastSeason: SeasonResult | null;
 }
 
-/** A $FANT transfer between two verified profiles (A5: integer micro-units). */
+/** A $NEFA transfer between two verified profiles (A5: integer micro-units). */
 export interface TokenTransfer {
   readonly transferId: string;
   readonly fromHandle: string;
@@ -113,7 +113,7 @@ export interface CityState {
   /** `${handle}:${mediaId}` — one counted comment per fan per post. */
   readonly countedPostKeys: Set<string>;
   readonly recentEventsByAuthor: Map<string, number[]>;
-  /** Handles that have commented at least once (received their $FANT grant). */
+  /** Handles that have commented at least once (received their $NEFA grant). */
   readonly activeHandles: Set<string>;
   /** `${fan}>${idol}` — each fan counts once per idol. */
   readonly fanEdges: Set<string>;
@@ -122,7 +122,7 @@ export interface CityState {
   readonly reputationXpByHandle: Map<string, number>;
   /** Reputation fans earned for each idol. */
   readonly reputationXpByFandom: Map<string, number>;
-  /** $FANT, the tradable balance. */
+  /** $NEFA, the tradable balance. */
   readonly tokenBalancesMicro: Map<string, bigint>;
   readonly listings: Map<string, MarketListing>;
   readonly settledTxRefs: Set<string>;
@@ -187,7 +187,7 @@ export function createCityState(config: CityLedgerConfig = DEFAULT_LEDGER_CONFIG
   };
 }
 
-/** XP a profile earns; it also counts towards this season's $FANT payout. */
+/** XP a profile earns; it also counts towards this season's $NEFA payout. */
 function earnXp(state: CityState, handle: string, xp: number): void {
   addXp(state.reputationXpByHandle, handle, xp);
   addXp(state.tokenomics.seasonXp, handle, xp);
@@ -499,7 +499,7 @@ export function applyListingCreated(state: CityState, input: CreateListingInput)
     plotAlreadyListed,
   });
 
-  if (listing.assetType === 'FANT_PACK' && listing.tokenAmountMicro !== null) {
+  if (listing.assetType === 'NEFA_PACK' && listing.tokenAmountMicro !== null) {
     // Escrow at listing time so the same tokens cannot be listed twice.
     addTokens(state, listing.sellerHandle, -listing.tokenAmountMicro);
   }
@@ -516,7 +516,7 @@ export function applyListingCancelled(state: CityState, listingId: string, selle
   if (listing.status !== 'OPEN') {
     throw new MarketError('LISTING_UNAVAILABLE', `Listing ${listingId} is ${listing.status} and cannot be cancelled.`);
   }
-  if (listing.assetType === 'FANT_PACK' && listing.tokenAmountMicro !== null) {
+  if (listing.assetType === 'NEFA_PACK' && listing.tokenAmountMicro !== null) {
     addTokens(state, listing.sellerHandle, listing.tokenAmountMicro);
   }
   const cancelled: MarketListing = { ...listing, status: 'CANCELLED' };
@@ -546,7 +546,7 @@ export function applyTokenTransfer(state: CityState, transfer: TokenTransfer): T
     throw new MarketError('INVALID_PRICE', 'Transfer amount must be a positive integer.');
   }
   if (transfer.fromHandle === transfer.toHandle) {
-    throw new MarketError('WASH_TRADE', 'You cannot send $FANT to yourself.');
+    throw new MarketError('WASH_TRADE', 'You cannot send $NEFA to yourself.');
   }
   addTokens(state, transfer.fromHandle, -transfer.amountMicro);
   addTokens(state, transfer.toHandle, transfer.amountMicro);
@@ -577,7 +577,7 @@ export function applyPaymentSettled(state: CityState, proof: SettlementProof): S
     grantDeed(state, proof.buyerHandle, settled.plotIndex);
     // The billboard belongs to the deed, not the street: a new owner starts blank.
     state.lotAds.delete(settled.plotIndex);
-  } else if (settled.assetType === 'FANT_PACK' && settled.tokenAmountMicro !== null) {
+  } else if (settled.assetType === 'NEFA_PACK' && settled.tokenAmountMicro !== null) {
     addTokens(state, proof.buyerHandle, settled.tokenAmountMicro);
   } else {
     throw new MarketError('INVALID_ASSET', `Listing ${settled.listingId} has no transferable asset.`);
@@ -664,7 +664,7 @@ export function topFans(state: CityState, limit: number): FanProfile[] {
     .map(([handle]) => fanProfile(state, handle));
 }
 
-/** Largest $FANT balance first. */
+/** Largest $NEFA balance first. */
 export function topHolders(state: CityState, limit: number): FanProfile[] {
   return Array.from(state.tokenBalancesMicro.entries())
     .filter(([, balance]) => balance > 0n)

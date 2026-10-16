@@ -75,7 +75,7 @@ export function parseAndValidateComment(
   if (candidates.length === 0) {
     return mentions.includes(fan)
       ? { code: 'SELF_MINT_FORBIDDEN', error: 'A fan cannot be their own fandom.' }
-      : { code: 'INVALID_COMMENT_FORMAT', error: 'Mention your idol, not only @fanation.club.' };
+      : { code: 'INVALID_COMMENT_FORMAT', error: 'Mention your idol, not only @naoeumfa.' };
   }
 
   const fandomHandle = candidates.find(isFeaturedFandom) ?? candidates[0];

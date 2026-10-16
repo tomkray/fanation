@@ -1,6 +1,6 @@
 /**
  * Display formatting from integer strings. No floating point ever touches an
- * amount (Axiom A5); only the final text is localised (en-US grouping).
+ * amount (Axiom A5); final text is localised for pt-BR (1.234,56).
  */
 
 import type { ArchitectureRarity } from '../core/architecture.js';
@@ -9,7 +9,7 @@ import type { PropertyClass, PropertyFootprint } from '../core/property.js';
 import type { FandomCategory, PaymentMethod } from '../core/types.js';
 
 function groupThousands(digits: string): string {
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 function splitUnits(raw: string, decimals: number): { whole: string; fraction: string } {
@@ -24,12 +24,12 @@ function splitUnits(raw: string, decimals: number): { whole: string; fraction: s
 
 export function formatBrlCents(raw: string): string {
   const { whole, fraction } = splitUnits(raw, 2);
-  return `R$ ${whole}.${fraction}`;
+  return `R$ ${whole},${fraction}`;
 }
 
 export function formatMicro(raw: string, fractionDigits = 2): string {
   const { whole, fraction } = splitUnits(raw, 6);
-  return fractionDigits > 0 ? `${whole}.${fraction.slice(0, fractionDigits)}` : whole;
+  return fractionDigits > 0 ? `${whole},${fraction.slice(0, fractionDigits)}` : whole;
 }
 
 export function formatSats(raw: string): string {
@@ -89,38 +89,38 @@ export function formatWindow(seconds: number): string {
 }
 
 export const CLASS_LABELS: Readonly<Record<PropertyClass, string>> = {
-  COTTAGE: 'Cottage',
-  HOUSE: 'House',
-  TOWNHOUSE: 'Townhouse',
-  VILLA: 'Villa',
-  TOWER: 'Tower',
-  SKYSCRAPER: 'Skyscraper',
-  MEGATOWER: 'Megatower',
-  LANDMARK: 'Landmark',
+  COTTAGE: 'Chalé',
+  HOUSE: 'Casa',
+  TOWNHOUSE: 'Sobrado',
+  VILLA: 'Vila',
+  TOWER: 'Torre',
+  SKYSCRAPER: 'Arranha-céu',
+  MEGATOWER: 'Megatorre',
+  LANDMARK: 'Marco',
 };
 
 export const RARITY_LABELS: Readonly<Record<ArchitectureRarity, string>> = {
-  COMMON: 'Common',
-  UNCOMMON: 'Uncommon',
-  RARE: 'Rare',
-  EPIC: 'Epic',
-  LEGENDARY: 'Legendary',
-  MYTHIC: 'Mythic',
-  APEX: 'Apex',
+  COMMON: 'Comum',
+  UNCOMMON: 'Incomum',
+  RARE: 'Raro',
+  EPIC: 'Épico',
+  LEGENDARY: 'Lendário',
+  MYTHIC: 'Mítico',
+  APEX: 'Ápice',
 };
 
-/** Deed line: "Legendary · Round tower". */
+/** Deed line: "Lendário · Torre redonda". */
 export function architectureLabel(plotIndex: number, fans: number, footprint: PropertyFootprint): string {
   const look = architectureOf(plotIndex, fans, footprint);
   return `${RARITY_LABELS[look.rarity]} · ${look.style.name}`;
 }
 
 export const CATEGORY_LABELS: Readonly<Record<FandomCategory, string>> = {
-  ARTIST: 'Artist',
-  CLUB: 'Club',
+  ARTIST: 'Artista',
+  CLUB: 'Clube',
   INFLUENCER: 'Creator',
-  ATHLETE: 'Athlete',
-  UNLISTED: 'Community',
+  ATHLETE: 'Atleta',
+  UNLISTED: 'Comunidade',
 };
 
 export function timeAgo(iso: string, nowMs: number): string {

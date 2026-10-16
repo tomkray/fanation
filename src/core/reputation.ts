@@ -1,6 +1,6 @@
 /**
  * Reputation (XP): earned by a profile for taking part, never bought, sold or
- * transferred. $FANT is the tradable balance; XP is who you are.
+ * transferred. $NEFA is the tradable balance; XP is who you are.
  */
 
 export const MINT_XP = 100;

@@ -1,5 +1,5 @@
 /**
- * P2P marketplace rules (`fanation.club/market`). Pure functions over
+ * P2P marketplace rules (`naoeumfa/market`). Pure functions over
  * listings; the ledger applies their results. Axiom A5: integers only.
  */
 
@@ -117,12 +117,12 @@ export function createMarketListing(input: CreateListingInput, ctx: ListingConte
         throw new MarketError('ALREADY_LISTED', `Plot #${input.plotIndex} already has an active listing.`);
       }
       break;
-    case 'FANT_PACK':
+    case 'NEFA_PACK':
       if (input.tokenAmountMicro === null || input.tokenAmountMicro <= 0n) {
         throw new MarketError('INVALID_ASSET', 'tokenAmountMicro must be positive.');
       }
       if (ctx.sellerBalanceMicro < input.tokenAmountMicro) {
-        throw new MarketError('INSUFFICIENT_BALANCE', 'Insufficient $FANT balance to escrow the pack.');
+        throw new MarketError('INSUFFICIENT_BALANCE', 'Insufficient $NEFA balance to escrow the pack.');
       }
       break;
     default: {
@@ -136,7 +136,7 @@ export function createMarketListing(input: CreateListingInput, ctx: ListingConte
     sellerHandle: input.sellerHandle,
     assetType: input.assetType,
     plotIndex: input.assetType === 'LAND_PLOT' ? input.plotIndex : null,
-    tokenAmountMicro: input.assetType === 'FANT_PACK' ? input.tokenAmountMicro : null,
+    tokenAmountMicro: input.assetType === 'NEFA_PACK' ? input.tokenAmountMicro : null,
     priceBrlCents: input.priceBrlCents,
     priceUsdtMicro: input.priceUsdtMicro,
     priceBtcSats: input.priceBtcSats,

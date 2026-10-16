@@ -5,12 +5,12 @@ import { formatInteger, formatMicro, timeAgo } from '../format.js';
 import { Avatar } from './Identity.js';
 
 const REJECTION_LABELS: Readonly<Record<CommentRejectionCode, string>> = {
-  DUPLICATE_COMMENT_ID: 'Already read',
-  OWN_ACCOUNT_COMMENT: 'Official account',
-  RATE_LIMIT_EXCEEDED: 'Too fast',
-  INVALID_COMMENT_FORMAT: 'Off-format',
-  SELF_MINT_FORBIDDEN: 'Self-fandom',
-  POST_ALREADY_COUNTED: 'Already scored on this post',
+  DUPLICATE_COMMENT_ID: 'Já li esse',
+  OWN_ACCOUNT_COMMENT: 'Conta oficial',
+  RATE_LIMIT_EXCEEDED: 'Calma, speeder',
+  INVALID_COMMENT_FORMAT: 'Formato errado',
+  SELF_MINT_FORBIDDEN: 'Autofan? Negativo',
+  POST_ALREADY_COUNTED: 'Já pontuou nesse post',
 };
 
 export interface LiveFeedProps {
@@ -26,22 +26,22 @@ function Outcome({ entry }: { readonly entry: ActivityEntryDto }): React.ReactEl
     case 'MINTED_NEW_LAND':
       return (
         <span className="badge badge--success">
-          🏠 Moved in next to @{outcome.idolHandle} · fan #{formatInteger(outcome.idolFans)} · +{outcome.xpGained} XP
-          {outcome.tokensGrantedMicro && ` · +${formatMicro(outcome.tokensGrantedMicro, 0)} $FANT`}
+          🏠 Se mudou pro lado de @{outcome.idolHandle} · fã #{formatInteger(outcome.idolFans)} · +{outcome.xpGained} XP
+          {outcome.tokensGrantedMicro && ` · +${formatMicro(outcome.tokensGrantedMicro, 0)} $NEFA`}
         </span>
       );
     case 'ENGAGEMENT_POINTS_ONLY':
       return outcome.newFan ? (
         <span className="badge badge--accent">
-          💜 Now fan #{formatInteger(outcome.idolFans)} of @{outcome.idolHandle} · +{outcome.xpGained} XP
+          💜 Agora é fã #{formatInteger(outcome.idolFans)} de @{outcome.idolHandle} · +{outcome.xpGained} XP
         </span>
       ) : (
         <span className="badge badge--accent">
-          ⚡ +{outcome.xpGained} XP for @{outcome.idolHandle}
+          ⚡ +{outcome.xpGained} XP pra @{outcome.idolHandle}
         </span>
       );
     case 'REJECTED':
-      return <span className="badge badge--muted">Ignored · {REJECTION_LABELS[outcome.code]}</span>;
+      return <span className="badge badge--muted">Ignorado · {REJECTION_LABELS[outcome.code]}</span>;
     default: {
       const exhaustive: never = outcome;
       return <span>{String(exhaustive)}</span>;
@@ -57,20 +57,20 @@ export const LiveFeed: React.FC<LiveFeedProps> = ({ entries, pollIntervalSeconds
   }, []);
 
   return (
-    <section className="glass panel panel--feed" aria-label="Live Instagram comments">
+    <section className="glass panel panel--feed" aria-label="Comentários ao vivo do Instagram">
       <header className="panel__header">
-        <span className="eyebrow">Live · Instagram</span>
-        <h2 className="title-sm">Incoming comments</h2>
+        <span className="eyebrow">Ao vivo · Instagram</span>
+        <h2 className="title-sm">Comentários chegando</h2>
         <p className="feed__cta">
-          Comment <strong>@your_idol</strong> on @fanation.club to move in next to them
-          {pollIntervalSeconds !== null && <span className="caption"> · read every {pollIntervalSeconds}s</span>}
+          Comenta <strong>@seu_idolo</strong> no @naoeumfa e muda pro lado dele
+          {pollIntervalSeconds !== null && <span className="caption"> · lendo a cada {pollIntervalSeconds}s</span>}
         </p>
         <button type="button" className="link-button feed__advertise" onClick={onAdvertise}>
-          Brands: put your ad on a zeppelin →
+          Marcas: anúncio no zepelim →
         </button>
       </header>
       <ol className="feed" role="log" aria-live="polite">
-        {entries.length === 0 && <li className="caption">Waiting for the first comment…</li>}
+        {entries.length === 0 && <li className="caption">Esperando o primeiro comentário… o silêncio também é plot.</li>}
         {entries.map((entry) => {
           const plot =
             entry.outcome.status === 'MINTED_NEW_LAND' || entry.outcome.status === 'ENGAGEMENT_POINTS_ONLY'

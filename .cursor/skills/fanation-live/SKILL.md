@@ -1,20 +1,23 @@
 ---
 name: fanation-live
 description: >-
-  Run Fanation Club day-one and live city ops: Instagram comment minting
-  (Muse bridge or Graph poller), profile avatars (one AvatarService pipeline),
-  Vercel proxy to this Mac, ledger/$FANT rules. Use when the user mentions
-  Fanation live, Muse comments, avatar photos, mint houses from Instagram,
-  bridge ingest, Discovery token, fanation-roan.vercel.app, atualizar,
-  passar geral, or sweep Instagram posts.
+  Run Não É Um Fã (naoeumfa.com) day-one and live city ops: Instagram comment
+  minting (Muse bridge or Graph poller), profile avatars (one AvatarService
+  pipeline), Vercel proxy to this Mac, ledger/$NEFA rules. Use when the user
+  mentions Não É Um Fã, naoeumfa, Fanation live (legacy name), Muse comments,
+  avatar photos, mint houses from Instagram, bridge ingest, Discovery token,
+  fanation-roan.vercel.app, atualizar, passar geral, or sweep Instagram posts.
 ---
 
-# Fanation live — city ops
+# Não É Um Fã — city ops
+
+**Brand (locked):** Não É Um Fã · `naoeumfa.com` · Instagram `@naoeumfa` · token `$NEFA`.
+UI copy is **pt-BR** (leve, memético, organizado). Legacy repo/env prefix
+`FANATION_*` may remain for ops — never print secrets.
 
 **One tube.** Muse and Meta are only different doors into the same
 `ingestComments` → ledger → `avatars.enqueue` + `refresh` path. Never invent a
-parallel mint or portrait system. Never print secrets. Never publish the reel
-unless asked.
+parallel mint or portrait system. Never publish the reel unless asked.
 
 ## One pipeline
 
@@ -30,43 +33,21 @@ comment (Muse JSON | Graph poll | webhook)
 
 When the Creator asks to “do it manually”, you still use this tube:
 `npm run muse:ingest` only. The bridge **refreshes fan+idol avatars before
-it answers** (same `AvatarService` as Graph). Only if the response lists
-`avatars.missing` may you inject CDN bytes via `avatars.seed` /
-`npm run avatar:seed` (same cache, escape hatch only).
+it answers**. Only if the response lists `avatars.missing` may you inject CDN
+bytes via `avatars.seed` / `npm run avatar:seed` (escape hatch only).
 
 ## Atualizar / passar geral (DYNAMIC — always)
 
-Triggers (any language / shorthand): *atualizar*, *passa geral*, *sweep*,
-*vê os posts*, *novos comentários*, *atualiza a cidade*, or when the Creator
-drops a new Instagram permalink and asks to pull it in.
+Triggers: *atualizar*, *passa geral*, *sweep*, *vê os posts*, *novos
+comentários*, *atualiza a cidade*, or a new Instagram permalink.
 
-**Do this every time — do not reuse a stale mental snapshot of the city.**
-
-1. **Registry** — read `scripts/live-posts.json`. If the Creator names a new
-   post URL, append it there before sweeping.
-2. **Pulse** — `bash scripts/live-status.sh` (local + Vercel). If local API is
-   down: ask Creator to run `bash scripts/reup-api.sh`. If public healthz fails
-   but local is up: recycle tunnel (`reup-public.sh`), update
-   `api/proxy.ts` + `api/healthz.ts` fallback URL, push when asked.
-3. **See comments live** — for **each** URL in `live-posts.json`, open the
-   Instagram permalink in the browser (or Muse JSON the Creator pasted) and
-   collect **every visible comment** (`authorUsername` + `text` + time if
-   shown). Login walls: ask Creator for a Muse dump of that post — never invent
-   comments.
-4. **Ingest** — write a batch JSON (temp under `/tmp` or `data/` — `data/` is
-   gitignored) and run:
-   ```bash
-   npm run muse:ingest -- /path/to/batch.json
-   ```
-   Same comment twice → no double mint (stable Muse hash). Expect response
-   `avatars.ok` / `avatars.missing`.
-5. **Prove** — re-run `bash scripts/live-status.sh` and confirm
-   [fanation-roan.vercel.app](https://fanation-roan.vercel.app/) shows the new
-   houses / ranking / Live feed. Report only the delta (new fans, idols, missing
-   avatars).
-
-Avatars are **not** a second step after a healthy Muse answer. They travel in
-the same request.
+1. **Registry** — `scripts/live-posts.json` (`account: @naoeumfa`). Append new URLs.
+2. **Pulse** — `bash scripts/live-status.sh`. Recycle API/tunnel if needed
+   (`reup-api.sh` / `reup-public.sh`); update proxy fallback + push when asked.
+3. **See comments** — open each post; collect every visible comment. Login wall →
+   ask Creator for Muse dump. Never invent comments.
+4. **Ingest** — `npm run muse:ingest -- batch.json` → expect `avatars.ok` / `missing`.
+5. **Prove** — live-status + public site. Report only the delta.
 
 ## Doors (not forks)
 
@@ -79,25 +60,10 @@ the same request.
 ## Day-one / live checklist
 
 1. API: `HOST=127.0.0.1 PORT=8787`, `FANATION_DEMO=0`, journal `data/ledger.jsonl`.
-2. Public: Vercel → Cloudflare tunnel → this Mac. Keep Mac + `cloudflared` up.
-3. Bridge secret in `.env` (24+). Never paste in chat.
-4. A1: one mint per `@`. Dedupe by Meta id or stable Muse hash.
-5. Tracked posts live in `scripts/live-posts.json` (committed).
-
-## Muse batch
-
-```bash
-npm run muse:ingest -- path/to/batch.json
-```
-
-JSON: `mediaUrl` or `mediaId` + `comments[{ authorUsername, text, timestamp?, commentId? }]`.
-Same batch twice → no double mint. Portraits enqueue + refresh automatically.
-
-## Avatars
-
-- Preferred: `FANATION_DISCOVERY_ACCESS_TOKEN` + `FANATION_DISCOVERY_IG_USER_ID`.
-- Until then: same queue uses public-page lookup. No second system.
-- Escape hatch only: `npm run avatar:seed -- <handle> [file|url]` writes into **the same** `data/avatars` cache.
+2. Official handle: `@naoeumfa` (`FANATION_IG_USERNAME` / `OFFICIAL_INSTAGRAM_HANDLE`).
+3. Public: Vercel → Cloudflare tunnel → this Mac.
+4. Bridge secret in `.env` (24+). Never paste in chat.
+5. A1: one mint per `@`. Connect codes are `NEFA-XXXXXX`. Client header `X-Naoeumfa-Client`.
 
 ## Prove
 
@@ -105,13 +71,10 @@ Same batch twice → no double mint. Portraits enqueue + refresh automatically.
 bash scripts/live-status.sh
 ```
 
-## Push / Vercel
-
-Ledger + avatar **bytes** stay on the Mac. Push only for code/UI/proxy URL changes.
-
 ## Forbidden
 
 - A second “manual avatar pipeline” beside `AvatarService`.
 - Mixing demo journal with the real planet.
 - Printing tokens.
+- Shipping English UI copy on the public site.
 - Skipping the post sweep when the Creator asked to atualizar.

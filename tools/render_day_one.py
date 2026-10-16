@@ -70,7 +70,7 @@ LINES = [
         "say": "Plus your FANT pack. You earned it.",
         "shot": "pack",
         "eyebrow": "YOUR PACK",
-        "headline": "Plus your $FANT pack.",
+        "headline": "Plus your $NEFA pack.",
         "sub": "You earned it.",
         "cta": "⚡  Your pack",
     },
@@ -87,7 +87,7 @@ LINES = [
         "shot": "cta",
         "eyebrow": "GO",
         "headline": "Comment now.",
-        "sub": "@fanation.club",
+        "sub": "@naoeumfa",
         "cta": "🏠  Move in today",
     },
 ]
@@ -98,10 +98,10 @@ You got an idol? This is your moment.
 Comment their @. That's how you claim it.
 
 A house, right next to them.
-Plus your $FANT pack. You earned it. ⚡
+Plus your $NEFA pack. You earned it. ⚡
 
 One mint per @. Forever.
-Comment now. @fanation.club
+Comment now. @naoeumfa
 
 #FanationClub #DayOne #Fandom
 """

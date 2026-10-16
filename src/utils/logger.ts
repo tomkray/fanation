@@ -1,5 +1,5 @@
 /**
- * Structured safe logger for Fanation Club.
+ * Structured safe logger for Não É Um Fã.
  * Redacts sensitive keys, tokens, and secrets before writing to stdout/stderr.
  */
 
@@ -45,7 +45,7 @@ export const logger = {
   write(level: LogLevel, event: string, meta?: LogMetadata): void {
     const entry = {
       timestamp: new Date().toISOString(),
-      service: 'fanation-club',
+      service: 'naoeumfa',
       level,
       event,
       ...sanitizeMetadata(meta),

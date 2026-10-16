@@ -1,6 +1,6 @@
 /**
  * The city reorganizes itself (Axiom A3). Who owns what, the fan graph, XP and
- * $FANT never change; positions are a view of the fan tree that is rebuilt
+ * $NEFA never change; positions are a view of the fan tree that is rebuilt
  * from scratch at each layout epoch:
  *
  * - in each city the founding idols (catalogued landmarks, and people who were

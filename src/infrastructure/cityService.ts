@@ -122,7 +122,7 @@ function toTokenomicsDto(t: TokenomicsState): TokenomicsDto {
     locked: bucket !== 'FAN_MINT' && bucket !== 'SEASONS',
   }));
   return {
-    symbol: 'FANT',
+    symbol: 'NEFA',
     maxSupplyMicro: MAX_SUPPLY_MICRO.toString(),
     mintedMicro: (t.fanMintedMicro + t.seasonPaidMicro).toString(),
     buckets,

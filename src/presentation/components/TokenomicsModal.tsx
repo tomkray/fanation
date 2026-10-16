@@ -1,4 +1,4 @@
-/** $FANT explained with live numbers (A11): supply, buckets, the halving mint and reputation seasons. */
+/** $NEFA explained with live numbers (A11): supply, buckets, the halving mint and reputation seasons. */
 
 import React from 'react';
 import type { AllocationBucket } from '../../core/tokenomics.js';
@@ -6,11 +6,11 @@ import type { TokenomicsDto } from '../../shared/apiContract.js';
 import { formatInteger, formatMicro } from '../format.js';
 
 const BUCKET_COPY: Readonly<Record<AllocationBucket, { readonly label: string; readonly how: string; readonly color: string }>> = {
-  FAN_MINT: { label: 'Fan Mint', how: 'A pack for every new member; halves each era', color: '#3AD6FF' },
-  SEASONS: { label: 'Seasons', how: 'Paid by reputation (XP) earned each season', color: '#BF5AF2' },
-  LIQUIDITY: { label: 'Liquidity', how: 'Locked for marketplace liquidity', color: '#30D158' },
-  TREASURY: { label: 'Treasury', how: 'Locked · 48-month vesting, 12-month cliff', color: '#FF9F0A' },
-  ECOSYSTEM: { label: 'Ecosystem', how: 'Locked · partner and creator grants', color: '#FFD60A' },
+  FAN_MINT: { label: 'Mint de Fã', how: 'Pacote pra cada membro novo; cai pela metade a cada era', color: '#3AD6FF' },
+  SEASONS: { label: 'Temporadas', how: 'Pago por XP ganho em cada temporada', color: '#BF5AF2' },
+  LIQUIDITY: { label: 'Liquidez', how: 'Travado pra liquidez do mercado', color: '#30D158' },
+  TREASURY: { label: 'Tesouro', how: 'Travado · vesting 48 meses, cliff 12', color: '#FF9F0A' },
+  ECOSYSTEM: { label: 'Ecossistema', how: 'Travado · grants pra parceiros e creators', color: '#FFD60A' },
 };
 
 function pct(part: string, whole: string): number {
@@ -32,13 +32,13 @@ export const TokenomicsModal: React.FC<{ readonly tokenomics: TokenomicsDto; rea
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <section className="glass modal modal--tokenomics" role="dialog" aria-modal="true" aria-label="$FANT tokenomics" onClick={(e) => e.stopPropagation()}>
+      <section className="glass modal modal--tokenomics" role="dialog" aria-modal="true" aria-label="$NEFA tokenomics" onClick={(e) => e.stopPropagation()}>
         <header className="modal__header">
           <div>
-            <span className="eyebrow">Tokenomics · live</span>
-            <h2 className="title-md">$FANT</h2>
+            <span className="eyebrow">Tokenomics · ao vivo</span>
+            <h2 className="title-md">$NEFA</h2>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close">
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar">
             ×
           </button>
         </header>
@@ -46,7 +46,7 @@ export const TokenomicsModal: React.FC<{ readonly tokenomics: TokenomicsDto; rea
         <div className="supply">
           <div className="supply__numbers">
             <strong>{formatMicro(tokenomics.mintedMicro, 0)}</strong>
-            <span className="caption">of {formatMicro(tokenomics.maxSupplyMicro, 0)} $FANT ever ({pct(tokenomics.mintedMicro, tokenomics.maxSupplyMicro)}%)</span>
+            <span className="caption">de {formatMicro(tokenomics.maxSupplyMicro, 0)} $NEFA no máximo ({pct(tokenomics.mintedMicro, tokenomics.maxSupplyMicro)}%)</span>
           </div>
           <span className="xp-bar" aria-hidden="true">
             <span className="xp-bar__fill" style={{ width: `${Math.max(0.5, pct(tokenomics.mintedMicro, tokenomics.maxSupplyMicro))}%` }} />
@@ -75,53 +75,53 @@ export const TokenomicsModal: React.FC<{ readonly tokenomics: TokenomicsDto; rea
 
         <dl className="stats-grid">
           <div>
-            <dt>Next newcomer gets</dt>
+            <dt>Próximo novato leva</dt>
             <dd>{formatMicro(fanMint.packMicro, 0)}</dd>
           </div>
           <div>
-            <dt>Their idol gets</dt>
+            <dt>O ídolo dele leva</dt>
             <dd>{formatMicro(idolShare.toString(), 0)}</dd>
           </div>
           <div>
-            <dt>Mint era</dt>
+            <dt>Era do mint</dt>
             <dd>#{fanMint.era}</dd>
           </div>
           <div>
-            <dt>Members</dt>
+            <dt>Membros</dt>
             <dd>{formatInteger(fanMint.members)}</dd>
           </div>
           <div>
-            <dt>Next halving at</dt>
+            <dt>Próximo halving em</dt>
             <dd>{fanMint.nextEraAtMember === null ? '—' : `#${formatInteger(fanMint.nextEraAtMember)}`}</dd>
           </div>
           <div>
-            <dt>Next season prize</dt>
+            <dt>Prêmio da próxima temporada</dt>
             <dd>{formatMicro(seasons.nextPrizeMicro, 0)}</dd>
           </div>
         </dl>
 
         {seasons.last && (
-          <section className="profile__section" aria-label="Last season">
-            <h3 className="title-sm">Season {seasons.last.season} paid {formatMicro(seasons.last.paidMicro, 0)} $FANT</h3>
+          <section className="profile__section" aria-label="Última temporada">
+            <h3 className="title-sm">Temporada {seasons.last.season} pagou {formatMicro(seasons.last.paidMicro, 0)} $NEFA</h3>
             <ol className="season-top">
               {seasons.last.top.slice(0, 5).map((w) => (
                 <li key={w.handle}>
                   <strong>@{w.handle}</strong>
-                  <span className="caption">{formatMicro(w.micro, 2)} $FANT</span>
+                  <span className="caption">{formatMicro(w.micro, 2)} $NEFA</span>
                 </li>
               ))}
             </ol>
           </section>
         )}
 
-        <section className="profile__section" aria-label="Rules">
-          <h3 className="title-sm">The rules of the game</h3>
+        <section className="profile__section" aria-label="Regras">
+          <h3 className="title-sm">As regras do jogo</h3>
           <ul className="rules">
-            <li>One pack per Instagram account, ever — and packs halve as the planet grows, so early fans win and fake accounts stop paying off.</li>
-            <li>10% of every pack goes to the idol who was named: anyone can be an idol, so bring real fans.</li>
-            <li>Seasons pay $FANT in proportion to the XP earned in them. XP is capped per post and per day, can never be bought or sold, and no one takes more than 2% of a season.</li>
-            <li>Tag friends after you join: +1 XP per new friend, once each, up to 20 a day.</li>
-            <li>The supply can never pass 100,000,000. Locked buckets are never emitted by the game.</li>
+            <li>Um pacote por conta do Instagram, pra sempre — e o pacote cai pela metade conforme o planeta cresce: early bird come, farmzinho chora.</li>
+            <li>10% de cada pacote vai pro ídolo nomeado: qualquer um pode ser ídolo, então traz gente de verdade.</li>
+            <li>Temporadas pagam $NEFA proporcional ao XP. XP tem teto por post e por dia, não se compra, não se vende, e ninguém leva mais de 2% da temporada.</li>
+            <li>Marca amigos depois de entrar: +1 XP por amigo novo, uma vez cada, até 20 por dia.</li>
+            <li>Supply nunca passa de 100.000.000. Baldes travados o jogo não emite.</li>
           </ul>
         </section>
       </section>

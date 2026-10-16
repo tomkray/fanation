@@ -1,5 +1,5 @@
 /**
- * Fanation Club HTTP API (Node native http).
+ * Não É Um Fã HTTP API (Node native http).
  *
  *   GET  /healthz
  *   GET  /api/v1/config
@@ -146,7 +146,7 @@ export function createFanationServer(config: AppConfig, services: FanationServic
   heartbeat.unref();
 
   const publicConfig: PublicConfigDto = {
-    brand: { name: 'Fanation Club', domain: 'fanation.club' },
+    brand: { name: 'Não É Um Fã', domain: 'naoeumfa.com' },
     demo: config.sandbox,
     commentSource: config.commentSource,
     pollIntervalSeconds: config.pollIntervalSeconds,

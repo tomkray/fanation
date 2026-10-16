@@ -65,7 +65,7 @@ function drawCreative(ad: AdDto): THREE.CanvasTexture {
   fitFont(ctx, ad.tagline, 600, 46, BANNER_W - 96);
   ctx.fillText(ad.tagline, 50, 186);
   ctx.fillStyle = ad.accentHex;
-  const mark = ad.house ? `@${ad.partnerHandle} · Advertise here` : `@${ad.partnerHandle} · Sponsored`;
+  const mark = ad.house ? `@${ad.partnerHandle} · Anuncie aqui` : `@${ad.partnerHandle} · Patrocinado`;
   fitFont(ctx, mark, 700, 34, BANNER_W - 96);
   ctx.fillText(mark, 50, 230);
   texture.needsUpdate = true;

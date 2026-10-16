@@ -1,6 +1,6 @@
 /**
  * First contact with the official account: proves the token works, reads the
- * latest @fanation.club posts and shows what the city WOULD do with each real
+ * latest @naoeumfa posts and shows what the city WOULD do with each real
  * comment. Runs the real rules on an in-memory city; nothing is written.
  *
  *   npm run instagram:check

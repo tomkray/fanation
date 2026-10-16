@@ -84,7 +84,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
               <span className="badge badge--success">Verified on Instagram</span>
             </div>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close" disabled={busy}>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar" disabled={busy}>
             ×
           </button>
         </header>
@@ -99,7 +99,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
 
         <dl className="stats-grid">
           <div>
-            <dt>$FANT</dt>
+            <dt>$NEFA</dt>
             <dd>{formatMicro(me.tokenBalanceMicro)}</dd>
           </div>
           <div>
@@ -127,12 +127,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
         {error && <p className="notice notice--danger">{error}</p>}
         {notice && <p className="notice notice--success">{notice}</p>}
 
-        <section className="profile__section" aria-label="Your bank">
-          <h3 className="title-sm">Your bank</h3>
+        <section className="profile__section" aria-label="Seu banco">
+          <h3 className="title-sm">Seu banco</h3>
           <p className="caption">
             {me.mintedPlotIndex !== null
               ? `One mint (${homeNumber(me.mintedPlotIndex)}). The rest you buy.`
-              : 'Comment an idol\'s @ on @fanation.club to mint your first home. After that, you only buy.'}
+              : 'Comenta o @ do ídolo no @naoeumfa pra mintar a primeira casa. Depois disso, só comprando.'}
           </p>
           {me.properties.length === 0 && <p className="caption">No deeds in the bank yet.</p>}
           <ul className="listings">
@@ -155,7 +155,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
                     </button>
                     {listing ? (
                       <button type="button" className="button button--secondary" disabled={busy || listing.status !== 'OPEN'} onClick={() => void run('Listing cancelled.', () => api.cancelListing(listing.listingId))}>
-                        {listing.status === 'OPEN' ? 'Cancel listing' : 'Being paid'}
+                        {listing.status === 'OPEN' ? 'Cancelar anúncio' : 'Pagamento em curso'}
                       </button>
                     ) : (
                       <span className="inline-form">
@@ -174,7 +174,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
                           onClick={() => {
                             const cents = centsFromInput(prices[p.plotIndex] ?? '');
                             if (cents) {
-                              void run('Listed for sale.', () => api.listProperty(p.plotIndex, cents));
+                              void run('Colocado à venda.', () => api.listProperty(p.plotIndex, cents));
                             }
                           }}
                         >
@@ -191,7 +191,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
 
         {acceptedForMe.length > 0 && (
           <section className="profile__section" aria-label="Accepted offers">
-            <h3 className="title-sm">Your offer was accepted 🎉</h3>
+            <h3 className="title-sm">Sua oferta foi aceita 🎉</h3>
             <ul className="listings">
               {acceptedForMe.map((o) => (
                 <li key={o.id} className="listing">
@@ -200,7 +200,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
                     <span className="caption">Home {homeNumber(o.plotIndex)} from @{o.toHandle} — first to pay gets it</span>
                   </div>
                   <button type="button" className="button button--primary" onClick={() => o.listingId && onBuyListing(o.listingId)}>
-                    Buy now
+                    Comprar agora
                   </button>
                 </li>
               ))}
@@ -209,37 +209,37 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
         )}
 
         <section className="profile__section" aria-label="Offers">
-          <h3 className="title-sm">Offers</h3>
+          <h3 className="title-sm">Ofertas</h3>
           {me.offersReceived.length === 0 && me.offersMade.length === 0 && <p className="caption">No offers yet.</p>}
           <ul className="listings">
             {me.offersReceived.map((o) => (
-              <OfferRow key={o.id} offer={o} mine={false} busy={busy} act={(action) => void run(`Offer ${action === 'accept' ? 'accepted — your home is now listed at that price' : 'declined'}.`, () => api.decideOffer(o.id, action))} />
+              <OfferRow key={o.id} offer={o} mine={false} busy={busy} act={(action) => void run(`Oferta ${action === 'accept' ? 'aceita — sua casa está anunciada nesse preço' : 'recusada'}.`, () => api.decideOffer(o.id, action))} />
             ))}
             {me.offersMade.map((o) => (
-              <OfferRow key={o.id} offer={o} mine busy={busy} act={(action) => void run('Offer withdrawn.', () => api.decideOffer(o.id, action))} />
+              <OfferRow key={o.id} offer={o} mine busy={busy} act={(action) => void run('Oferta retirada.', () => api.decideOffer(o.id, action))} />
             ))}
           </ul>
         </section>
 
-        <section className="profile__section" aria-label="Send $FANT">
-          <h3 className="title-sm">Send $FANT</h3>
+        <section className="profile__section" aria-label="Enviar $NEFA">
+          <h3 className="title-sm">Enviar $NEFA</h3>
           <form
             className="inline-form"
             onSubmit={(e) => {
               e.preventDefault();
               const micro = microFromInput(sendAmount);
               if (micro) {
-                void run(`Sent ${sendAmount} $FANT to @${sendTo.replace(/^@/, '')}.`, () => api.transfer(sendTo, micro)).then(() => setSendAmount(''));
+                void run(`Sent ${sendAmount} $NEFA to @${sendTo.replace(/^@/, '')}.`, () => api.transfer(sendTo, micro)).then(() => setSendAmount(''));
               }
             }}
           >
             <input className="field__input" placeholder="@friend" value={sendTo} onChange={(e) => setSendTo(e.target.value)} autoCapitalize="none" spellCheck={false} maxLength={31} required />
-            <input className="field__input field__input--compact" inputMode="decimal" placeholder="Amount" value={sendAmount} onChange={(e) => setSendAmount(e.target.value)} required />
+            <input className="field__input field__input--compact" inputMode="decimal" placeholder="Valor" value={sendAmount} onChange={(e) => setSendAmount(e.target.value)} required />
             <button type="submit" className="button button--primary" disabled={busy || !microFromInput(sendAmount)}>
               Send
             </button>
           </form>
-          <p className="caption">XP is earned and stays yours forever; only $FANT and properties can change hands.</p>
+          <p className="caption">XP is earned and stays yours forever; only $NEFA and properties can change hands.</p>
         </section>
 
         <footer className="profile__footer">

@@ -1,11 +1,5 @@
 {
-  "account": "@fanation.club",
-  "notes": "Posts the agent must sweep when the Creator says atualizar / passar geral. Add every new day-one permalink here.",
-  "posts": [
-    {
-      "shortcode": "DekREvupc2d",
-      "url": "https://www.instagram.com/p/DekREvupc2d/",
-      "role": "day-one"
-    }
-  ]
+  "account": "@naoeumfa",
+  "notes": "Posts the agent must sweep when the Creator says atualizar / passar geral. Add every new day-one permalink here after rebrand.",
+  "posts": []
 }

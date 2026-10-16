@@ -1,5 +1,5 @@
 /**
- * $FANT (A11): the cap is never exceeded, packs halve by era, idols earn their
+ * $NEFA (A11): the cap is never exceeded, packs halve by era, idols earn their
  * royalty, seasons pay by reputation within their pool, and friend tags pay
  * +1 XP once per friend with a daily cap.
  */
@@ -12,7 +12,7 @@ import {
   distributeByWeight,
   FIRST_ERA_MEMBERS,
   MAX_SUPPLY_MICRO,
-  MICRO_PER_FANT,
+  MICRO_PER_NEFA,
   mintEraFor,
   seasonPrizeMicro,
   splitPack,
@@ -24,26 +24,26 @@ function say(state: CityState, author: string, text: string, atMs: number, media
   return applyCommentEvent(state, { commentId: `t${seq}`, mediaId, text, authorUsername: author, authorId: null, receivedAtMs: atMs });
 }
 
-describe('$FANT supply', () => {
+describe('$NEFA supply', () => {
   it('allocates exactly 100M across the buckets', () => {
     expect(Object.values(ALLOCATION_BPS).reduce((a, b) => a + b, 0n)).toBe(10_000n);
-    expect(MAX_SUPPLY_MICRO).toBe(100_000_000n * MICRO_PER_FANT);
-    expect(bucketCapMicro('FAN_MINT')).toBe(60_000_000n * MICRO_PER_FANT);
+    expect(MAX_SUPPLY_MICRO).toBe(100_000_000n * MICRO_PER_NEFA);
+    expect(bucketCapMicro('FAN_MINT')).toBe(60_000_000n * MICRO_PER_NEFA);
   });
 
   it('halves the pack every era while doubling the era, and stops at the cap', () => {
-    expect(mintEraFor(0)).toMatchObject({ era: 0, packMicro: 1_000n * MICRO_PER_FANT, nextEraAtMember: FIRST_ERA_MEMBERS });
-    expect(mintEraFor(FIRST_ERA_MEMBERS)).toMatchObject({ era: 1, packMicro: 500n * MICRO_PER_FANT, nextEraAtMember: FIRST_ERA_MEMBERS * 3 });
-    expect(mintEraFor(FIRST_ERA_MEMBERS * 3).packMicro).toBe(250n * MICRO_PER_FANT);
-    // Every era emits the same 3M $FANT, so all 20 eras add up to the 60M Fan Mint bucket.
+    expect(mintEraFor(0)).toMatchObject({ era: 0, packMicro: 1_000n * MICRO_PER_NEFA, nextEraAtMember: FIRST_ERA_MEMBERS });
+    expect(mintEraFor(FIRST_ERA_MEMBERS)).toMatchObject({ era: 1, packMicro: 500n * MICRO_PER_NEFA, nextEraAtMember: FIRST_ERA_MEMBERS * 3 });
+    expect(mintEraFor(FIRST_ERA_MEMBERS * 3).packMicro).toBe(250n * MICRO_PER_NEFA);
+    // Every era emits the same 3M $NEFA, so all 20 eras add up to the 60M Mint de Fã bucket.
     let total = 0n;
     for (let era = 0; era < 20; era += 1) {
       const e = mintEraFor(FIRST_ERA_MEMBERS * (2 ** era - 1));
       total += e.packMicro * BigInt(FIRST_ERA_MEMBERS * 2 ** era);
     }
-    // Integer halving truncates from era 10 on: ~1,490 $FANT of dust is never minted. The cap is a ceiling, never exceeded.
+    // Integer halving truncates from era 10 on: ~1,490 $NEFA of dust is never minted. The cap is a ceiling, never exceeded.
     expect(total).toBeLessThanOrEqual(bucketCapMicro('FAN_MINT'));
-    expect(total).toBeGreaterThan(bucketCapMicro('FAN_MINT') - 1_500n * MICRO_PER_FANT);
+    expect(total).toBeGreaterThan(bucketCapMicro('FAN_MINT') - 1_500n * MICRO_PER_NEFA);
     expect(mintEraFor(Number.MAX_SAFE_INTEGER).packMicro).toBe(0n);
     expect(splitPack(0, bucketCapMicro('FAN_MINT'))).toEqual({ memberMicro: 0n, idolMicro: 0n });
     expect(splitPack(0, bucketCapMicro('FAN_MINT') - 5n)).toEqual({ memberMicro: 5n, idolMicro: 0n });
@@ -59,13 +59,13 @@ describe('$FANT supply', () => {
   });
 });
 
-describe('$FANT in the ledger', () => {
+describe('$NEFA in the ledger', () => {
   it('mints one pack per new member, with the idol royalty, and tracks it', () => {
     const state = createCityState();
     say(state, 'ana', '@taylorswift', 1);
     say(state, 'ana', '@taylorswift', 2);
-    expect(state.tokenomics).toMatchObject({ members: 1, fanMintedMicro: 1_000n * MICRO_PER_FANT, idolRoyaltiesMicro: 100n * MICRO_PER_FANT });
-    expect(state.tokenBalancesMicro.get('ana')).toBe(900n * MICRO_PER_FANT);
+    expect(state.tokenomics).toMatchObject({ members: 1, fanMintedMicro: 1_000n * MICRO_PER_NEFA, idolRoyaltiesMicro: 100n * MICRO_PER_NEFA });
+    expect(state.tokenBalancesMicro.get('ana')).toBe(900n * MICRO_PER_NEFA);
   });
 
   it('pays each finished season by the XP earned in it, to fans and idols', () => {

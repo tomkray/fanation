@@ -1,5 +1,5 @@
 /**
- * Fanation Club shell: the live 3D world (city and planet views) with the
+ * Não É Um Fã shell: the live 3D world (city and planet views) with the
  * Instagram comment feed, the rankings, the property card and the marketplace
  * on top.
  */
@@ -279,24 +279,24 @@ export const App: React.FC = () => {
   return (
     <AvatarsEnabled.Provider value={config?.avatars ?? false}>
       <div className="app">
-        <div ref={viewportRef} className="viewport" aria-label="Fanation 3D world" />
+        <div ref={viewportRef} className="viewport" aria-label="Mundo 3D Não É Um Fã" />
 
         <nav className="glass topbar">
           <BrandLockup />
           <span className={`live-pill live-pill--${status}`}>
             <span className="live-dot" />
-            {status === 'live' ? 'Live' : status === 'connecting' ? 'Connecting…' : 'Reconnecting…'}
+            {status === 'live' ? 'Ao vivo' : status === 'connecting' ? 'Conectando…' : 'Reconectando…'}
             {config?.demo && <span className="live-pill__demo">DEMO</span>}
           </span>
           <span className="topbar__stats">
             <span>
-              <strong>{formatInteger(summary?.totals.properties ?? 0)}</strong> homes
+              <strong>{formatInteger(summary?.totals.properties ?? 0)}</strong> casas
             </span>
             <span>
-              <strong>{formatInteger(summary?.totals.idols ?? 0)}</strong> idols
+              <strong>{formatInteger(summary?.totals.idols ?? 0)}</strong> ídolos
             </span>
             <span>
-              <strong>{formatInteger(summary?.totals.commentsProcessed ?? 0)}</strong> comments read
+              <strong>{formatInteger(summary?.totals.commentsProcessed ?? 0)}</strong> comentários
             </span>
           </span>
           <button
@@ -305,26 +305,26 @@ export const App: React.FC = () => {
             aria-pressed={view === 'planet'}
             onClick={() => engineRef.current?.setView(view === 'planet' ? 'city' : 'planet')}
           >
-            {view === 'planet' ? 'City' : 'Planet'}
+            {view === 'planet' ? 'Cidade' : 'Planeta'}
           </button>
           <button type="button" className="button topbar__view" onClick={() => setTokenomicsOpen(true)}>
-            $FANT
+            $NEFA
           </button>
           <button type="button" className="button topbar__view" onClick={() => setAdvertise({ tapped: null })}>
-            Advertise
+            Anunciar
           </button>
           <button type="button" className="button topbar__view" onClick={() => setMarket({ focusListingId: null })}>
-            Marketplace
+            Mercado
           </button>
           {session.me ? (
-            <button type="button" className="topbar__me" onClick={() => setProfileOpen(true)} aria-label={`Your profile @${session.me.handle}`}>
+            <button type="button" className="topbar__me" onClick={() => setProfileOpen(true)} aria-label={`Seu perfil @${session.me.handle}`}>
               <Avatar handle={session.me.handle} size="sm" />
               <span>@{session.me.handle}</span>
-              <span className="level-badge">Lv {session.me.level}</span>
+              <span className="level-badge">Nv {session.me.level}</span>
             </button>
           ) : (
             <button type="button" className="button button--primary topbar__market" onClick={() => setConnectOpen(true)}>
-              Connect
+              Entrar
             </button>
           )}
         </nav>
@@ -334,7 +334,7 @@ export const App: React.FC = () => {
         {error && <p className="glass notice notice--danger toast">{error}</p>}
         {reorganized && !error && (
           <p className="glass notice toast" role="status">
-            The city just reorganized around its idols ✨
+            A cidade acabou de se reorganizar em volta dos ídolos ✨
           </p>
         )}
 
@@ -349,18 +349,18 @@ export const App: React.FC = () => {
         {deed}
 
         {mobilePanel !== null && <div className="sheet">{mobilePanel === 'league' ? league : feed}</div>}
-        <nav className="glass tabbar" aria-label="Panels">
+        <nav className="glass tabbar" aria-label="Painéis">
           <button type="button" aria-pressed={mobilePanel === 'league'} onClick={() => setMobilePanel(mobilePanel === 'league' ? null : 'league')}>
             Ranking
           </button>
           <button type="button" aria-pressed={mobilePanel === 'feed'} onClick={() => setMobilePanel(mobilePanel === 'feed' ? null : 'feed')}>
-            Live
+            Ao vivo
           </button>
           <button type="button" aria-pressed={view === 'planet'} onClick={() => engineRef.current?.setView(view === 'planet' ? 'city' : 'planet')}>
-            {view === 'planet' ? 'City' : 'Planet'}
+            {view === 'planet' ? 'Cidade' : 'Planeta'}
           </button>
           <button type="button" onClick={openWallet}>
-            {viewer ? 'Wallet' : 'Connect'}
+            {viewer ? 'Carteira' : 'Entrar'}
           </button>
         </nav>
 

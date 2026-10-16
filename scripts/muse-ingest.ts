@@ -37,7 +37,7 @@ async function main(): Promise<number> {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${secret}`,
-      'X-Fanation-Client': 'muse-ingest',
+      'X-Naoeumfa-Client': 'muse-ingest',
     },
     body,
     // Bridge now awaits AvatarService.refresh for each portrait — allow headroom.

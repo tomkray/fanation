@@ -1,7 +1,7 @@
 /**
- * Connect your Instagram (A10): no password, no app review. We show a
- * one-time code; you comment it on any @fanation.club post; Meta tells us who
- * wrote it, and this browser is signed in as that @.
+ * Conecta teu Instagram (A10): sem senha, sem app review. Mostramos um código
+ * único; você comenta no @naoeumfa; a Meta diz quem escreveu e o browser vira
+ * essa @.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -40,7 +40,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ onConnected, onClose
             setState('expired');
           }
         })
-        .catch(() => undefined); // A missed poll is retried on the next tick.
+        .catch(() => undefined);
     };
     const id = window.setInterval(poll, POLL_MS);
     return () => {
@@ -57,7 +57,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ onConnected, onClose
       setChallenge(await api.authChallenge(handle));
       setState('waiting');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create a code.');
+      setError(err instanceof ApiError ? err.message : 'Não rolou criar o código.');
       setState('idle');
     }
   };
@@ -71,19 +71,19 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ onConnected, onClose
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2_000);
     } catch {
-      setError('Copy failed; type the code instead.');
+      setError('Não copiou — digita o código na mão.');
     }
   };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <section className="glass modal modal--connect" role="dialog" aria-modal="true" aria-label="Connect your Instagram" onClick={(e) => e.stopPropagation()}>
+      <section className="glass modal modal--connect" role="dialog" aria-modal="true" aria-label="Conectar Instagram" onClick={(e) => e.stopPropagation()}>
         <header className="modal__header">
           <div>
-            <span className="eyebrow">Your profile wallet</span>
-            <h2 className="title-md">Connect your Instagram</h2>
+            <span className="eyebrow">Carteira do perfil</span>
+            <h2 className="title-md">Conecta teu Instagram</h2>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close">
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar">
             ×
           </button>
         </header>
@@ -91,16 +91,16 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ onConnected, onClose
         {state === 'idle' || state === 'asking' ? (
           <form className="connect" onSubmit={(e) => void ask(e)}>
             <p className="caption">
-              No password. You prove the @ is yours by commenting a one-time code on Instagram — the same place where your fan
-              life already happens.
+              Sem senha. Você prova que a @ é tua comentando um código único no Instagram — o mesmo lugar onde a vida de fã
+              (ops: de dono de terreno) já acontece.
             </p>
             <label className="field">
-              <span className="caption">Your Instagram @</span>
+              <span className="caption">Tua @ do Instagram</span>
               <input
                 className="field__input"
                 value={handle}
                 onChange={(e) => setHandle(e.target.value)}
-                placeholder="@your_username"
+                placeholder="@seu_usuario"
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}
@@ -110,46 +110,46 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ onConnected, onClose
             </label>
             {error && <p className="notice notice--danger">{error}</p>}
             <button type="submit" className="button button--primary" disabled={state === 'asking'}>
-              {state === 'asking' ? 'Creating your code…' : 'Get my code'}
+              {state === 'asking' ? 'Gerando código…' : 'Quero meu código'}
             </button>
           </form>
         ) : (
           <div className="connect">
             <ol className="connect__steps">
               <li>
-                <span className="caption">1 · Copy your code</span>
-                <button type="button" className="connect__code" onClick={() => void copy()} aria-label="Copy code">
+                <span className="caption">1 · Copia o código</span>
+                <button type="button" className="connect__code" onClick={() => void copy()} aria-label="Copiar código">
                   {challenge?.code}
                 </button>
-                <span className="caption">{copied ? 'Copied ✓' : 'Tap to copy · valid for 15 minutes · works once'}</span>
+                <span className="caption">{copied ? 'Copiado ✓' : 'Toca pra copiar · vale 15 min · uma vez só'}</span>
               </li>
               <li>
-                <span className="caption">2 · Comment it from @{challenge?.handle}</span>
-                <a className="button button--secondary" href={`https://www.instagram.com/${challenge?.officialHandle ?? 'fanation.club'}/`} target="_blank" rel="noreferrer noopener">
-                  Open @{challenge?.officialHandle} on Instagram
+                <span className="caption">2 · Comenta com @{challenge?.handle}</span>
+                <a className="button button--secondary" href={`https://www.instagram.com/${challenge?.officialHandle ?? 'naoeumfa'}/`} target="_blank" rel="noreferrer noopener">
+                  Abrir @{challenge?.officialHandle} no Instagram
                 </a>
-                <span className="caption">On any post. Only a comment written by @{challenge?.handle} unlocks this profile.</span>
+                <span className="caption">Em qualquer post. Só comentário escrito por @{challenge?.handle} destrava este perfil.</span>
               </li>
               <li>
-                <span className="caption">3 · Come back here</span>
+                <span className="caption">3 · Volta aqui</span>
                 {state === 'expired' ? (
-                  <p className="notice notice--warning">The code expired. Ask for a new one.</p>
+                  <p className="notice notice--warning">Código expirou. Pede outro.</p>
                 ) : (
                   <p className="connect__waiting">
-                    <span className="live-dot" /> Waiting for your comment…
+                    <span className="live-dot" /> Esperando teu comentário…
                   </p>
                 )}
               </li>
             </ol>
             {challenge?.canSimulate && state === 'waiting' && (
-              <button type="button" className="button button--ghost" onClick={() => void api.authSimulate().catch(() => setError('Simulation failed.'))}>
-                Demo: post the comment for me
+              <button type="button" className="button button--ghost" onClick={() => void api.authSimulate().catch(() => setError('Simulação falhou.'))}>
+                Demo: posta o comentário por mim
               </button>
             )}
             {error && <p className="notice notice--danger">{error}</p>}
             {state === 'expired' && (
               <button type="button" className="button button--primary" onClick={() => setState('idle')}>
-                New code
+                Novo código
               </button>
             )}
           </div>

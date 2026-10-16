@@ -28,7 +28,7 @@ export interface CitySite {
 const OFFSET = 36;
 
 export const CITY_SITES: readonly CitySite[] = [
-  { id: 'CAPITAL', name: 'Fanation Capital', centerQ: 0, centerR: 0, quadrant: null, colorHex: '#3AD6FF' },
+  { id: 'CAPITAL', name: 'Capital', centerQ: 0, centerR: 0, quadrant: null, colorHex: '#3AD6FF' },
   { id: 'MUSIC', name: 'Music City', centerQ: OFFSET, centerR: -OFFSET, quadrant: { q: 1, r: -1 }, colorHex: '#BF5AF2' },
   { id: 'SPORTS', name: 'Stadium City', centerQ: OFFSET, centerR: OFFSET, quadrant: { q: 1, r: 1 }, colorHex: '#30D158' },
   { id: 'CREATORS', name: 'Creator City', centerQ: -OFFSET, centerR: OFFSET, quadrant: { q: -1, r: 1 }, colorHex: '#FF9F0A' },

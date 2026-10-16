@@ -80,7 +80,7 @@ describe('comments name the idol; the author is the fan (A1, A2)', () => {
     expect(state.reputationXpByHandle.get('alice_fan')).toBe(110);
     expect(state.reputationXpByFandom.get('taylorswift')).toBe(110);
     expect(fansOf(state, 'taylorswift')).toBe(1);
-    // Era 0 pack: 1,000 $FANT — 900 to the newcomer, 100 to the idol they named.
+    // Era 0 pack: 1,000 $NEFA — 900 to the newcomer, 100 to the idol they named.
     expect(state.tokenBalancesMicro.get('alice_fan')).toBe(900_000_000n);
     expect(state.tokenBalancesMicro.get('taylorswift')).toBe(100_000_000n);
   });
@@ -101,12 +101,12 @@ describe('comments name the idol; the author is the fan (A1, A2)', () => {
   });
 
   it('rejects comments without an idol, self-fandom, bidi tricks, the official account and duplicates', () => {
-    const state = createCityState({ ...DEFAULT_LEDGER_CONFIG, officialAccountHandle: 'fanation.club' });
+    const state = createCityState({ ...DEFAULT_LEDGER_CONFIG, officialAccountHandle: 'naoeumfa' });
     expect(applyCommentEvent(state, comment('erin', 'so cool!!'))).toMatchObject({ code: 'INVALID_COMMENT_FORMAT' });
-    expect(applyCommentEvent(state, comment('frank', '@fanation.club'))).toMatchObject({ code: 'INVALID_COMMENT_FORMAT' });
+    expect(applyCommentEvent(state, comment('frank', '@naoeumfa'))).toMatchObject({ code: 'INVALID_COMMENT_FORMAT' });
     expect(applyCommentEvent(state, comment('narcissus', '@narcissus'))).toMatchObject({ code: 'SELF_MINT_FORBIDDEN' });
     expect(applyCommentEvent(state, comment('eve', '@taylorswift\u202E'))).toMatchObject({ code: 'INVALID_COMMENT_FORMAT' });
-    expect(applyCommentEvent(state, comment('fanation.club', '@taylorswift'))).toMatchObject({ code: 'OWN_ACCOUNT_COMMENT' });
+    expect(applyCommentEvent(state, comment('naoeumfa', '@taylorswift'))).toMatchObject({ code: 'OWN_ACCOUNT_COMMENT' });
     const once = comment('dup', '@taylorswift');
     expect(applyCommentEvent(state, once).status).toBe('MINTED_NEW_LAND');
     expect(applyCommentEvent(state, once)).toMatchObject({ code: 'DUPLICATE_COMMENT_ID' });
@@ -184,7 +184,7 @@ describe('reputation (XP) and user rankings', () => {
     expect([levelForXp(0), levelForXp(199), levelForXp(200), levelForXp(950)]).toEqual([1, 1, 2, 4]);
   });
 
-  it('ranks users by XP and by $FANT, and XP stays with the profile that earned it', () => {
+  it('ranks users by XP and by $NEFA, and XP stays with the profile that earned it', () => {
     const state = createCityState();
     applyCommentEvent(state, comment('ana', '@badbunnypr'));
     applyCommentEvent(state, comment('ben', '@badbunnypr'));

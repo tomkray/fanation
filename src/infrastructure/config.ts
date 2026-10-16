@@ -10,7 +10,7 @@ import { PaymentMethod } from '../core/types.js';
 export type CommentSourceMode = 'instagram' | 'simulated' | 'off';
 export type TokenTransport = 'query' | 'header';
 
-export const OFFICIAL_INSTAGRAM_HANDLE = 'fanation.club';
+export const OFFICIAL_INSTAGRAM_HANDLE = 'naoeumfa';
 /** Instagram API with Instagram Login: our own professional account, no Facebook Page needed. */
 export const DEFAULT_GRAPH_BASE_URL = 'https://graph.instagram.com/v23.0';
 
@@ -52,7 +52,7 @@ export interface AppConfig {
   readonly momentumWindowSeconds: number;
   /** The map reorganizes itself around the fan tree once per epoch of comment time (A3). */
   readonly layoutEpochSeconds: number;
-  /** A $FANT season (A11): reputation earned in it is paid out when it ends. */
+  /** A $NEFA season (A11): reputation earned in it is paid out when it ends. */
   readonly seasonSeconds: number;
   /** Bearer token for /api/v1/admin/*; admin routes are off when unset. */
   readonly adminToken: string | null;
@@ -213,7 +213,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
           ? requireSecret(env, 'FANATION_PAYMENT_WEBHOOK_SECRET', demo)
           : (readEnv(env, 'FANATION_PAYMENT_WEBHOOK_SECRET') ?? ''),
       pixKey,
-      pixMerchantName: readEnv(env, 'FANATION_PIX_MERCHANT_NAME') ?? 'FANATION CLUB',
+      pixMerchantName: readEnv(env, 'FANATION_PIX_MERCHANT_NAME') ?? 'NAO E UM FA',
       pixMerchantCity: readEnv(env, 'FANATION_PIX_MERCHANT_CITY') ?? 'SAO PAULO',
       cryptoRails: {
         USDT: readCryptoRail(env, 'FANATION_USDT'),

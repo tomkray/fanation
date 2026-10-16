@@ -1,10 +1,10 @@
 /**
- * $FANT tokenomics (Axiom A11). Hard cap 100,000,000 FANT (6 decimals). Every
+ * $NEFA tokenomics (Axiom A11). Hard cap 100,000,000 FANT (6 decimals). Every
  * unit is either emitted by play — joining the planet or earning reputation —
  * or sits in a locked bucket; nothing is minted by hand.
  *
  * Allocation
- *   60%  Fan Mint      — a pack for every new member, halving in eras
+ *   60%  Mint de Fã      — a pack for every new member, halving in eras
  *   15%  Seasons       — paid each season by reputation earned (XP), never by money
  *   10%  Liquidity     — locked for marketplace liquidity
  *   10%  Treasury      — locked, 48-month vesting with a 12-month cliff
@@ -24,9 +24,9 @@
  *   abruptly and early seasons cannot drain it.
  */
 
-export const FANT_DECIMALS = 6;
-export const MICRO_PER_FANT = 1_000_000n;
-export const MAX_SUPPLY_MICRO = 100_000_000n * MICRO_PER_FANT;
+export const NEFA_DECIMALS = 6;
+export const MICRO_PER_NEFA = 1_000_000n;
+export const MAX_SUPPLY_MICRO = 100_000_000n * MICRO_PER_NEFA;
 
 export type AllocationBucket = 'FAN_MINT' | 'SEASONS' | 'LIQUIDITY' | 'TREASURY' | 'ECOSYSTEM';
 
@@ -44,10 +44,10 @@ export function bucketCapMicro(bucket: AllocationBucket): bigint {
 }
 
 /** Era 0 pays 1,000 FANT to each of the first 3,000 members; every era doubles in length and halves the pack. */
-export const FIRST_PACK_MICRO = 1_000n * MICRO_PER_FANT;
+export const FIRST_PACK_MICRO = 1_000n * MICRO_PER_NEFA;
 export const FIRST_ERA_MEMBERS = 3_000;
 /**
- * 20 eras × 3M FANT = the 60M Fan Mint bucket; after that newcomers get their home only.
+ * 20 eras × 3M FANT = the 60M Mint de Fã bucket; after that newcomers get their home only.
  * Halving in whole micro-units truncates from era 10 on, so ~1,490 FANT of rounding dust is never minted.
  */
 export const MINT_ERAS = 20;
@@ -85,7 +85,7 @@ export interface PackSplit {
   readonly idolMicro: bigint;
 }
 
-/** The pack, clamped to what is left in the Fan Mint bucket, split between the newcomer and their idol. */
+/** The pack, clamped to what is left in the Mint de Fã bucket, split between the newcomer and their idol. */
 export function splitPack(memberIndex: number, fanMintedMicro: bigint): PackSplit {
   const remaining = bucketCapMicro('FAN_MINT') - fanMintedMicro;
   const scheduled = mintEraFor(memberIndex).packMicro;

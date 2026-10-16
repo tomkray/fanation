@@ -1,5 +1,5 @@
 /**
- * Fanation Club boundary suite: marketplace (A5), PIX, the Meta webhook, the
+ * Não É Um Fã boundary suite: marketplace (A5), PIX, the Meta webhook, the
  * Graph API collector and journal replay (A6). City rules live in city.test.ts.
  */
 
@@ -94,14 +94,14 @@ describe('marketplace (A5)', () => {
     const state = createCityState();
     applyCommentEvent(state, comment('holder', '@badbunnypr'));
     applyListingCreated(state, {
-      listingId: 'pack_1', sellerHandle: 'holder', assetType: 'FANT_PACK', plotIndex: null,
+      listingId: 'pack_1', sellerHandle: 'holder', assetType: 'NEFA_PACK', plotIndex: null,
       tokenAmountMicro: 600_000_000n, priceBrlCents: 1_000n, priceUsdtMicro: 1n, priceBtcSats: 1n, nowIso: 'x',
     });
-    // 900 $FANT from the joining pack, 600 escrowed in the listing.
+    // 900 $NEFA from the joining pack, 600 escrowed in the listing.
     expect(state.tokenBalancesMicro.get('holder')).toBe(300_000_000n);
     expect(() =>
       applyListingCreated(state, {
-        listingId: 'pack_2', sellerHandle: 'holder', assetType: 'FANT_PACK', plotIndex: null,
+        listingId: 'pack_2', sellerHandle: 'holder', assetType: 'NEFA_PACK', plotIndex: null,
         tokenAmountMicro: 600_000_000n, priceBrlCents: 1_000n, priceUsdtMicro: 1n, priceBtcSats: 1n, nowIso: 'x',
       })
     ).toThrow(/Insufficient/);
@@ -165,7 +165,7 @@ describe('PIX BR Code', () => {
     const code = buildPixBrCode({
       pixKey: '00000000-0000-0000-0000-000000000000',
       amountBrlCents: 25_000n,
-      merchantName: 'Fanation Club',
+      merchantName: 'Não É Um Fã',
       merchantCity: 'São Paulo',
       txid: 'FAN1234ABCD',
     });

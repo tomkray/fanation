@@ -1,5 +1,5 @@
 /**
- * Core domain types for Fanation Club (fanation.club).
+ * Core domain types for Não É Um Fã (naoeumfa).
  */
 
 import type { CityId } from './cities.js';
@@ -10,7 +10,7 @@ export type FandomCategory = 'ARTIST' | 'CLUB' | 'INFLUENCER' | 'ATHLETE' | 'UNL
 
 export type PaymentMethod = 'PIX' | 'USDT' | 'USDC' | 'BTC';
 
-export type ListingAssetType = 'LAND_PLOT' | 'FANT_PACK';
+export type ListingAssetType = 'LAND_PLOT' | 'NEFA_PACK';
 
 export type ListingStatus = 'OPEN' | 'LOCKED_ESCROW' | 'SETTLED' | 'CANCELLED';
 

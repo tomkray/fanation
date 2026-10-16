@@ -1,5 +1,5 @@
 """
-Fanation Club: reproducible night-neon city pieces, in metres, exported as
+Não É Um Fã: reproducible night-neon city pieces, in metres, exported as
 Draco-compressed GLB. Material and object names are a contract with the web
 engine (it re-tints the white parts per instance):
 

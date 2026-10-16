@@ -8,14 +8,14 @@
  *   GET  /api/v1/me                      the signed-in profile (stats, properties, listings, offers)
  *   POST /api/v1/me/listings             { plotIndex, priceBrlCents } list a property you own
  *   POST /api/v1/me/listings/:id/cancel
- *   POST /api/v1/me/transfers            { toHandle, amountMicro } send $FANT
+ *   POST /api/v1/me/transfers            { toHandle, amountMicro } send $NEFA
  *   POST /api/v1/me/lots/:plot/ad        { headline, tagline, backgroundHex, accentHex }
  *   DELETE /api/v1/me/lots/:plot/ad
  *   POST /api/v1/properties/:plot/offers { amountBrlCents } make an offer
  *   POST /api/v1/me/offers/:id/accept|decline|withdraw
  *
  * State-changing routes need the session cookie (HttpOnly, SameSite=Lax) and
- * the `X-Fanation-Client: web` header, which a cross-site form cannot send
+ * the `X-Naoeumfa-Client: web` header, which a cross-site form cannot send
  * without a CORS preflight this server never grants (CSRF defence).
  */
 
@@ -36,8 +36,8 @@ export interface WalletContext {
   readonly offers: OfferService;
 }
 
-const SESSION_COOKIE = 'fan_session';
-const CHALLENGE_COOKIE = 'fan_challenge';
+const SESSION_COOKIE = 'nefa_session';
+const CHALLENGE_COOKIE = 'nefa_challenge';
 const LISTING_CANCEL_ROUTE = /^\/api\/v1\/me\/listings\/(lst_[0-9a-z_]{1,40})\/cancel$/;
 const OFFER_ROUTE = /^\/api\/v1\/properties\/(\d{1,10})\/offers$/;
 const OFFER_DECISION_ROUTE = /^\/api\/v1\/me\/offers\/(off_[0-9a-f]{16})\/(accept|decline|withdraw)$/;
@@ -45,8 +45,8 @@ const LOT_AD_ROUTE = /^\/api\/v1\/me\/lots\/(\d{1,10})\/ad$/;
 
 /** CSRF: the app's own header, and no foreign Origin outside the demo's dev proxy. */
 export function requireAppClient(config: AppConfig, req: IncomingMessage): void {
-  if (header(req, 'x-fanation-client') !== 'web') {
-    throw new HttpError(403, 'FORBIDDEN', 'Requests must come from the Fanation app.');
+  if (header(req, 'x-naoeumfa-client') !== 'web') {
+    throw new HttpError(403, 'FORBIDDEN', 'Requests must come from the Não É Um Fã app.');
   }
   const origin = header(req, 'origin');
   const host = header(req, 'x-forwarded-host') ?? header(req, 'host');
@@ -89,7 +89,7 @@ export async function handleWalletRoute(ctx: WalletContext, req: IncomingMessage
         handle: challenge.handle,
         code: challenge.code,
         expiresAtIso: new Date(challenge.expiresAtMs).toISOString(),
-        officialHandle: config.meta.officialUsername ?? 'fanation.club',
+        officialHandle: config.meta.officialUsername ?? 'naoeumfa',
         canSimulate: config.sandbox,
       };
       res.setHeader('Set-Cookie', cookie(req, CHALLENGE_COOKIE, challenge.secret, CHALLENGE_TTL_MS / 1000, '/api/v1'));

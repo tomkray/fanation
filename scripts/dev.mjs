@@ -54,4 +54,4 @@ for (const child of children) {
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
-console.log('\n  Fanation Club dev → web http://127.0.0.1:5173  ·  api http://127.0.0.1:8787\n');
+console.log('\n  Não É Um Fã dev → web http://127.0.0.1:5173  ·  api http://127.0.0.1:8787\n');

@@ -1,15 +1,15 @@
 ---
 name: fanation-reel
 description: >-
-  Direct Fanation Club commercial reels. Match each spoken line to a different
+  Direct Não É Um Fã commercial reels. Match each spoken line to a different
   camera move and emotion, shoot real house close-ups from the live 3D city,
   voice with the ElevenLabs character, and bed every video with a quiet 8-bit
   chiptune from ElevenLabs Music plus cut sound effects. Use when the user
-  asks for a Fanation video, reel, day-one cut, voiceover, camera angles,
-  chiptune, or a more emotional or professional take.
+  asks for a Não É Um Fã / Fanation video, reel, day-one cut, voiceover,
+  camera angles, chiptune, or a more emotional or professional take.
 ---
 
-# Fanation reel — director
+# Não É Um Fã reel — director
 
 You are the commercial director. The line decides the shot. Two cuts in a row never share a move. Nothing publishes unless the user asks.
 
@@ -45,9 +45,9 @@ Day-one spine:
 
 - The planet just went live.
 - Got an idol? Comment their @.
-- A house right next to them, plus the $FANT pack.
+- A house right next to them, plus the $NEFA pack.
 - One mint per @. Forever.
-- Comment now, on @fanation.club.
+- Comment now, on @naoeumfa.
 
 Output: `renders/fanation_day_one.mp4` and `renders/day-one-caption.txt`. Open the mp4.
 

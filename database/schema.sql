@@ -1,5 +1,5 @@
 -- ============================================================================
--- Fanation Club (fanation.club) — PostgreSQL schema
+-- Não É Um Fã (naoeumfa) — PostgreSQL schema
 -- The ledger_events journal is the source of truth (Axiom A6); the other
 -- tables are projections rebuilt from it. Constraints repeat the core rules
 -- so the database refuses what the code refuses (A1, A5).
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS token_balances (
 CREATE TABLE IF NOT EXISTS market_listings (
     listing_id          VARCHAR(64) PRIMARY KEY,
     seller_handle       VARCHAR(30) NOT NULL,
-    asset_type          VARCHAR(24) NOT NULL CHECK (asset_type IN ('LAND_PLOT', 'FANT_PACK')),
+    asset_type          VARCHAR(24) NOT NULL CHECK (asset_type IN ('LAND_PLOT', 'NEFA_PACK')),
     plot_index          INTEGER REFERENCES lands(plot_index),
     token_amount_micro  BIGINT CHECK (token_amount_micro IS NULL OR token_amount_micro > 0),
     price_brl_cents     BIGINT NOT NULL CHECK (price_brl_cents > 0),
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS market_listings (
     created_at          TIMESTAMPTZ NOT NULL,
     settled_at          TIMESTAMPTZ,
     CHECK ((asset_type = 'LAND_PLOT') = (plot_index IS NOT NULL)),
-    CHECK ((asset_type = 'FANT_PACK') = (token_amount_micro IS NOT NULL))
+    CHECK ((asset_type = 'NEFA_PACK') = (token_amount_micro IS NOT NULL))
 );
 -- At most one active listing per plot.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_active_listing_per_plot

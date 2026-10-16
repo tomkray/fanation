@@ -2,7 +2,7 @@
  * Rankings, gamified. Idols: the single global ranking with positions
  * gained/lost and score change versus the momentum window, a flash plus a
  * sliding reorder the moment someone overtakes, category filters, top movers
- * and a climb ticker. People: top reputation (XP) and top $FANT balances.
+ * and a climb ticker. People: top reputation (XP) and top $NEFA balances.
  */
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -16,12 +16,12 @@ type Filter = 'ALL' | FandomCategory;
 type View = 'idols' | 'xp' | 'tokens';
 
 const FILTERS: readonly { readonly id: Filter; readonly label: string }[] = [
-  { id: 'ALL', label: 'All' },
-  { id: 'ARTIST', label: 'Artists' },
-  { id: 'CLUB', label: 'Clubs' },
+  { id: 'ALL', label: 'Tudo' },
+  { id: 'ARTIST', label: 'Artistas' },
+  { id: 'CLUB', label: 'Clubes' },
   { id: 'INFLUENCER', label: 'Creators' },
-  { id: 'ATHLETE', label: 'Athletes' },
-  { id: 'UNLISTED', label: 'Community' },
+  { id: 'ATHLETE', label: 'Atletas' },
+  { id: 'UNLISTED', label: 'Comunidade' },
 ];
 
 const FLASH_MS = 1_600;
@@ -29,15 +29,15 @@ const REORDER_MS = 520;
 
 function RankDelta({ movement }: { readonly movement: StandingDto['movement'] }): React.ReactElement {
   if (movement.isNew) {
-    return <span className="lb-delta lb-delta--new">NEW</span>;
+    return <span className="lb-delta lb-delta--new">NOVO</span>;
   }
   if (movement.rankDelta > 0) {
-    return <span className="lb-delta lb-delta--up" aria-label={`up ${movement.rankDelta}`}>▲{movement.rankDelta}</span>;
+    return <span className="lb-delta lb-delta--up" aria-label={`subiu ${movement.rankDelta}`}>▲{movement.rankDelta}</span>;
   }
   if (movement.rankDelta < 0) {
-    return <span className="lb-delta lb-delta--down" aria-label={`down ${-movement.rankDelta}`}>▼{-movement.rankDelta}</span>;
+    return <span className="lb-delta lb-delta--down" aria-label={`desceu ${-movement.rankDelta}`}>▼{-movement.rankDelta}</span>;
   }
-  return <span className="lb-delta lb-delta--flat" aria-label="no change">–</span>;
+  return <span className="lb-delta lb-delta--flat" aria-label="sem mudança">–</span>;
 }
 
 function ScoreChange({ pct }: { readonly pct: number | null }): React.ReactElement {
@@ -144,23 +144,23 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges
   return (
     <section className="glass panel panel--league" aria-label="Rankings">
       <header className="panel__header">
-        <span className="eyebrow">Global ranking · live</span>
-        <h2 className="title-sm">Fanation Leaderboard</h2>
+        <span className="eyebrow">Ranking global · ao vivo</span>
+        <h2 className="title-sm">Quem tá voando</h2>
         <p className="caption">
           {view === 'idols'
-            ? `Reputation (XP) fans earned for each idol · movement vs ${formatWindow(momentumWindowSeconds)} ago`
+            ? `XP que os fãs renderam pra cada ídolo · movimento vs ${formatWindow(momentumWindowSeconds)} atrás`
             : view === 'xp'
-              ? 'Reputation is earned by taking part and can never be sold'
-              : 'Tradable $FANT balance'}
+              ? 'XP se ganha jogando — e não se vende. Zero negociata.'
+              : 'Saldo $NEFA negociável (a moeda do rolê)'}
         </p>
       </header>
 
       <div className="segmented segmented--compact" role="tablist" aria-label="Ranking">
         {(
           [
-            ['idols', 'Idols'],
+            ['idols', 'Ídolos'],
             ['xp', 'Top XP'],
-            ['tokens', 'Top $FANT'],
+            ['tokens', 'Top $NEFA'],
           ] as const
         ).map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={view === id} className="segmented__item" onClick={() => setView(id)}>
@@ -196,14 +196,14 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges
               )}
               {rankChanges[0] && (
                 <span className="caption">
-                  {rankChanges[0].toRank === 1 ? `@${rankChanges[0].fandomHandle} takes #1` : `@${rankChanges[0].fandomHandle} climbs to #${rankChanges[0].toRank}`} · {timeAgo(rankChanges[0].atIso, now)}
+                  {rankChanges[0].toRank === 1 ? `@${rankChanges[0].fandomHandle} assumiu o #1` : `@${rankChanges[0].fandomHandle} subiu pro #${rankChanges[0].toRank}`} · {timeAgo(rankChanges[0].atIso, now)}
                 </span>
               )}
             </p>
           )}
 
           <ol className="league leaderboard">
-            {rows.length === 0 && <li className="caption">No idols in this category yet.</li>}
+            {rows.length === 0 && <li className="caption">Nenhum ídolo nessa categoria ainda. Alguém abre o jogo?</li>}
             {rows.map((idol) => {
               const flash = flashes.get(idol.fandomHandle);
               return (
@@ -216,7 +216,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges
                       <strong>{idol.displayName}</strong>
                       <span className="caption">
                         {idol.displayName !== `@${idol.fandomHandle}` && <span className="identity__handle">@{idol.fandomHandle} · </span>}
-                        {RARITY_LABELS[architectureBand(visualClassFor(idol.fans, idol.footprint)).rarity]} · {CLASS_LABELS[idol.propertyClass]} · {formatCompact(idol.fans)} fans
+                        {RARITY_LABELS[architectureBand(visualClassFor(idol.fans, idol.footprint)).rarity]} · {CLASS_LABELS[idol.propertyClass]} · {formatCompact(idol.fans)} fãs
                       </span>
                     </span>
                     <span className="league__stats" title={`${formatInteger(idol.reputationXp)} XP`}>
@@ -233,7 +233,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges
 
       {view !== 'idols' && (
         <ol className="league leaderboard">
-          {people.length === 0 && <li className="caption">Nobody yet. Be the first!</li>}
+          {people.length === 0 && <li className="caption">Ninguém ainda. Seja o plot twist.</li>}
           {people.map((person, index) => {
             const idol = person.fandomHandle ? standingsByHandle.get(person.fandomHandle) : undefined;
             const accent = idol?.neonColorHex;
@@ -246,19 +246,19 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges
                     <span className="identity">
                       <strong className="identity__name">@{person.handle}</strong>
                       <span className="level-badge" style={{ borderColor: accent }}>
-                        Lv {person.level}
+                        Nv {person.level}
                       </span>
                     </span>
                     <span className="xp-bar" aria-hidden="true">
                       <span className="xp-bar__fill" style={{ width: `${Math.round(person.levelProgress * 100)}%`, backgroundColor: accent }} />
                     </span>
                     <span className="caption">
-                      {person.fans > 0 ? `${formatInteger(person.fans)} fans · ` : ''}
-                      {person.fandomHandle ? `fan of ${idol && idol.displayName !== `@${idol.fandomHandle}` ? `${idol.displayName} ` : ''}@${person.fandomHandle}` : 'Idol'}
+                      {person.fans > 0 ? `${formatInteger(person.fans)} fãs · ` : ''}
+                      {person.fandomHandle ? `fã de ${idol && idol.displayName !== `@${idol.fandomHandle}` ? `${idol.displayName} ` : ''}@${person.fandomHandle}` : 'Ídolo'}
                     </span>
                   </span>
                   <span className="league__stats">
-                    <strong>{view === 'xp' ? `${formatInteger(person.reputationXp)} XP` : `${formatMicro(person.tokenBalanceMicro, 0)} $FANT`}</strong>
+                    <strong>{view === 'xp' ? `${formatInteger(person.reputationXp)} XP` : `${formatMicro(person.tokenBalanceMicro, 0)} $NEFA`}</strong>
                     {person.propertyClass && <span className="caption">{CLASS_LABELS[person.propertyClass]}</span>}
                   </span>
                 </button>
