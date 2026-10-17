@@ -42,6 +42,7 @@ import {
   ChunkSummaryDto,
   CommentSourceName,
   ListingDto,
+  FounderBadgeDto,
   MeDto,
   OfferDto,
   PropertyDetailDto,
@@ -126,6 +127,7 @@ function toActivityOutcome(outcome: CommentProcessingOutcome): ActivityOutcome {
     newFan: outcome.newFan,
     xpGained: outcome.xpGained,
     tokensGrantedMicro: outcome.status === 'MINTED_NEW_LAND' && outcome.tokensGrantedMicro > 0n ? outcome.tokensGrantedMicro.toString() : null,
+    becameCaptain: outcome.becameCaptain,
   };
 }
 
@@ -179,6 +181,7 @@ function toListingDto(listing: MarketListing): ListingDto {
     assetType: listing.assetType,
     plotIndex: listing.plotIndex,
     tokenAmountMicro: listing.tokenAmountMicro?.toString() ?? null,
+    badgeIdol: listing.badgeIdol,
     priceBrlCents: listing.priceBrlCents.toString(),
     priceUsdtMicro: listing.priceUsdtMicro.toString(),
     priceBtcSats: listing.priceBtcSats.toString(),
@@ -316,6 +319,8 @@ export class CityService {
         const offer = this.state.offers.get(event.offerId);
         return offer ? [offer.fromHandle, offer.toHandle] : [];
       }
+      case 'badge_transferred':
+        return [event.fromHandle, event.toHandle];
       default: {
         const exhaustive: never = event;
         throw new Error(`Unknown ledger event ${String((exhaustive as { kind?: unknown }).kind)}`);
@@ -456,6 +461,7 @@ export class CityService {
       rankPosition: s.rankPosition,
       perks: s.perks,
       movement: movementAgainst(baseline, s),
+      captainHandle: this.state.founderBadges.get(s.fandomHandle)?.holderHandle ?? null,
     }));
     const rankChanges: RankChangeDto[] = this.momentum.recentChanges.map((change) => {
       const meta = resolveFandomMetadata(change.fandomHandle);
@@ -556,7 +562,52 @@ export class CityService {
       market: this.marketOf(land.plotIndex, pendingOffers),
       ownerHomes: homesOwnedBy(this.state, land.ownerHandle),
       lotAd: this.state.lotAds.get(land.plotIndex) ?? null,
+      captainOf: this.badgesHeldBy(land.ownerHandle).map((b) => b.idolHandle),
     };
+  }
+
+  private badgesHeldBy(handle: string): FounderBadgeDto[] {
+    const held: FounderBadgeDto[] = [];
+    for (const badge of this.state.founderBadges.values()) {
+      if (badge.holderHandle !== handle) {
+        continue;
+      }
+      let listingId: string | null = null;
+      for (const l of this.state.listings.values()) {
+        if (l.badgeIdol === badge.idolHandle && (l.status === 'OPEN' || l.status === 'LOCKED_ESCROW')) {
+          listingId = l.listingId;
+        }
+      }
+      held.push({ idolHandle: badge.idolHandle, founderHandle: badge.founderHandle, holderHandle: badge.holderHandle, mintedAtIso: badge.mintedAtIso, listingId });
+    }
+    return held.sort((a, b) => a.mintedAtIso.localeCompare(b.mintedAtIso));
+  }
+
+  /** The holder gives the captain tag to another player. */
+  transferBadge(fromHandle: string, idolHandle: string, toHandle: string): FounderBadgeDto {
+    const result = this.commit({ kind: 'badge_transferred', idolHandle, fromHandle, toHandle, atIso: new Date().toISOString() }, 'wallet');
+    this.notify();
+    if (result.kind !== 'badge_transferred') {
+      throw new Error('Unexpected ledger result for badge_transferred.');
+    }
+    const { badge } = result;
+    return { idolHandle: badge.idolHandle, founderHandle: badge.founderHandle, holderHandle: badge.holderHandle, mintedAtIso: badge.mintedAtIso, listingId: null };
+  }
+
+  /** The holder puts the captain tag up for sale; it moves to the buyer at settlement. */
+  listBadge(sellerHandle: string, idolHandle: string, priceBrlCents: bigint): MarketListing {
+    return this.createListing({
+      listingId: `lst_${randomBytes(8).toString('hex')}`,
+      sellerHandle,
+      assetType: 'FOUNDER_BADGE',
+      plotIndex: null,
+      tokenAmountMicro: null,
+      badgeIdol: idolHandle,
+      priceBrlCents,
+      priceUsdtMicro: usdMicroFromBrlCents(priceBrlCents),
+      priceBtcSats: satsFromBrlCents(priceBrlCents),
+      nowIso: new Date().toISOString(),
+    });
   }
 
   profileDetail(handle: string, pendingOffers = 0): PropertyDetailDto | null {
@@ -590,6 +641,7 @@ export class CityService {
       mintedPlotIndex: minted === undefined ? null : minted,
       properties: owned.map((plot) => this.toPropertyDto(this.state.lands[plot])),
       listings,
+      badges: this.badgesHeldBy(handle),
     };
   }
 
@@ -826,7 +878,8 @@ export class CityService {
       case 'offer_made':
       case 'offer_closed':
       case 'offer_accepted':
-        // Offers and the listing an accepted offer opens travel in property details, not the map.
+      case 'badge_transferred':
+        // Offers, listings and captain tags travel in details and rankings, not the map.
         return [];
       case 'lot_ad_set':
         return [result.plotIndex];

@@ -83,6 +83,10 @@ export const api = {
     request<OfferDto>(`/api/v1/me/offers/${encodeURIComponent(offerId)}/${action}`, { method: 'POST', body: '{}' }),
   setLotAd: (plotIndex: number, creative: { readonly headline: string; readonly tagline: string; readonly backgroundHex: string; readonly accentHex: string }) =>
     request<{ ok: boolean }>(`/api/v1/me/lots/${plotIndex}/ad`, { method: 'POST', body: JSON.stringify(creative) }),
+  transferBadge: (idolHandle: string, toHandle: string) =>
+    request<{ holderHandle: string }>(`/api/v1/me/badges/${encodeURIComponent(idolHandle)}/transfer`, { method: 'POST', body: JSON.stringify({ toHandle }) }),
+  listBadge: (idolHandle: string, priceBrlCents: string) =>
+    request<{ listingId: string }>(`/api/v1/me/badges/${encodeURIComponent(idolHandle)}/list`, { method: 'POST', body: JSON.stringify({ priceBrlCents }) }),
   clearLotAd: (plotIndex: number) => request<{ ok: boolean }>(`/api/v1/me/lots/${plotIndex}/ad`, { method: 'DELETE' }),
   ads: () => request<AdsDto>('/api/v1/ads'),
   requestAd: (body: AdRequestBody) =>

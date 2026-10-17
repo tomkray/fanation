@@ -1901,6 +1901,36 @@ button.feed__button:hover {
   font-weight: 700;
 }
 
+.deed__captain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  margin-top: var(--space-2xs);
+}
+
+/* Gold like the #1 medal: the tag is an honour, not a stat. */
+.captain-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 214, 10, 0.55);
+  background: rgba(255, 214, 10, 0.14);
+  color: #ffd60a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.captain-chip:hover {
+  background: rgba(255, 214, 10, 0.24);
+}
+
+.lb-captain {
+  color: #ffd60a;
+  font-weight: 600;
+}
+
 .lot-ad {
   display: flex;
   flex-direction: column;

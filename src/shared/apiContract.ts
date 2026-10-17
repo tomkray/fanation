@@ -57,6 +57,18 @@ export interface PropertyDetailDto extends PropertyDto {
   readonly ownerHomes: number;
   /** Billboard the owner put on this lot; null when the lot is silent. */
   readonly lotAd: LotAdDto | null;
+  /** Idols whose captain tag the current owner holds. */
+  readonly captainOf: readonly string[];
+}
+
+/** A captain tag (A12): issued to the fan who brought the idol in; tradable. */
+export interface FounderBadgeDto {
+  readonly idolHandle: string;
+  readonly founderHandle: string;
+  readonly holderHandle: string;
+  readonly mintedAtIso: string;
+  /** Set while the tag is for sale. */
+  readonly listingId: string | null;
 }
 
 export interface LotAdDto {
@@ -111,6 +123,8 @@ export interface MeDto {
   readonly listings: readonly ListingDto[];
   readonly offersReceived: readonly OfferDto[];
   readonly offersMade: readonly OfferDto[];
+  /** Captain tags this @ holds. */
+  readonly badges: readonly FounderBadgeDto[];
 }
 
 /** The @ a one-time login link signs in as. */
@@ -145,6 +159,8 @@ export interface StandingDto {
     readonly scoreDeltaPct: number | null;
     readonly isNew: boolean;
   };
+  /** Who holds this idol's captain tag; null before anyone named them. */
+  readonly captainHandle: string | null;
 }
 
 export interface RankChangeDto {
@@ -175,6 +191,8 @@ export interface ListingDto {
   readonly assetType: ListingAssetType;
   readonly plotIndex: number | null;
   readonly tokenAmountMicro: string | null;
+  /** FOUNDER_BADGE: whose captain tag is for sale. */
+  readonly badgeIdol: string | null;
   readonly priceBrlCents: string;
   readonly priceUsdtMicro: string;
   readonly priceBtcSats: string;
@@ -194,6 +212,8 @@ export type ActivityOutcome =
       readonly xpGained: number;
       /** $NEFA the newcomer received from their joining pack (micro-units). */
       readonly tokensGrantedMicro: string | null;
+      /** This comment brought the idol in: its author got the captain tag. */
+      readonly becameCaptain: boolean;
     }
   | { readonly status: 'REJECTED'; readonly code: CommentRejectionCode };
 

@@ -12,9 +12,18 @@ function priceOf(listing: ListingDto, method: PaymentMethod): string {
 }
 
 function listingTitle(listing: ListingDto): string {
-  return listing.assetType === 'LAND_PLOT'
-    ? `Land #${listing.plotIndex}`
-    : `${formatMicro(listing.tokenAmountMicro ?? '0', 0)} $NEFA pack`;
+  switch (listing.assetType) {
+    case 'LAND_PLOT':
+      return `Land #${listing.plotIndex}`;
+    case 'NEFA_PACK':
+      return `${formatMicro(listing.tokenAmountMicro ?? '0', 0)} $NEFA pack`;
+    case 'FOUNDER_BADGE':
+      return `🎖️ Tag de capitão de @${listing.badgeIdol ?? '?'}`;
+    default: {
+      const exhaustive: never = listing.assetType;
+      return String(exhaustive);
+    }
+  }
 }
 
 export interface MarketplaceModalProps {

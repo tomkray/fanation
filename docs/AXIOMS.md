@@ -61,5 +61,8 @@ The browser then gets a session (HttpOnly, SameSite=Lax, Secure over HTTPS; only
 ## A11 — $NEFA: Capped, Earned, Balanced
 Hard cap 100,000,000 $NEFA. 60% Mint de Fã: one pack per new member, 1,000 $NEFA for the first 3,000 members, then each era doubles in length and halves the pack (20 eras; after that, the home only); 10% of each pack goes to the idol the member named. 15% Seasons: when a season ends (`NAOEUMFA_SEASON_SECONDS` of comment time), 1% of what is left in the bucket is paid in proportion to the XP earned in that season — 70% to fans by their own XP, 30% to idols by the XP their fans earned for them — with no handle above 2%. 10% Liquidity, 10% Treasury (48-month vesting, 12-month cliff) and 5% Ecosystem stay locked and are never emitted by the game. Every emission is a ledger effect of a journaled comment, so replaying the journal reproduces every balance.
 
+## A12 — The Captain Tag: Who Brought the Idol In
+The comment that gives an idol its first fan also issues that idol's captain tag (🎖️) to that fan, in the same ledger event: one tag per idol, ever, and only to a real fan of that idol. The tag remembers its founder forever; whoever holds it now is the idol's captain. It is an asset, not reputation: the holder can give it away (`badge_transferred`) or sell it on the market (`FOUNDER_BADGE` listing, escrowed checkout, moved to the buyer at settlement). A tag for sale cannot be given away, the official account can never hold one, and future powers attach to whoever holds it.
+
 ## A8 — Clarity, 8pt Grid
 UI spacing comes only from `4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 / 96 / 128 px`, touch targets ≥ 44 px, dark frosted glass and a single action blue, so the neon city carries the colour.

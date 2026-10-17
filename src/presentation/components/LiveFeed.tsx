@@ -28,12 +28,14 @@ function Outcome({ entry }: { readonly entry: ActivityEntryDto }): React.ReactEl
         <span className="badge badge--success">
           🏠 Se mudou pro lado de @{outcome.idolHandle} · fã #{formatInteger(outcome.idolFans)} · +{outcome.xpGained} XP
           {outcome.tokensGrantedMicro && ` · +${formatMicro(outcome.tokensGrantedMicro, 0)} $NEFA`}
+          {outcome.becameCaptain && ` · 🎖️ virou capitão de @${outcome.idolHandle}`}
         </span>
       );
     case 'ENGAGEMENT_POINTS_ONLY':
       return outcome.newFan ? (
         <span className="badge badge--accent">
           💜 Agora é fã #{formatInteger(outcome.idolFans)} de @{outcome.idolHandle} · +{outcome.xpGained} XP
+          {outcome.becameCaptain && ` · 🎖️ virou capitão`}
         </span>
       ) : (
         <span className="badge badge--accent">

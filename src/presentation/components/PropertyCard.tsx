@@ -283,6 +283,15 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ target, version, cit
           <span className="deed__bank">
             Banco · {formatInteger(detail.ownerHomes)} casa{detail.ownerHomes === 1 ? '' : 's'}
           </span>
+          {detail.captainOf.length > 0 && (
+            <span className="deed__captain">
+              {detail.captainOf.map((idol) => (
+                <button key={idol} type="button" className="captain-chip" onClick={() => onFocusHandle(idol)} title="Trouxe esse ídolo pra cidade">
+                  🎖️ Capitão de @{idol}
+                </button>
+              ))}
+            </span>
+          )}
         </span>
         <span className="level-badge" style={{ borderColor: detail.colorHex }}>
           Nv {detail.level}

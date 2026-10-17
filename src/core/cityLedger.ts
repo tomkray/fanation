@@ -80,6 +80,20 @@ export interface TokenTransfer {
   readonly atIso: string;
 }
 
+/**
+ * The captain tag of one idol (A12): issued once, forever, to the fan who
+ * brought that idol into the city (fan #1). It is an asset, not reputation:
+ * it can be given away or sold, and whoever holds it is the idol's captain.
+ */
+export interface FounderBadge {
+  readonly idolHandle: string;
+  /** Who brought the idol in. Never changes, whoever holds the tag later. */
+  readonly founderHandle: string;
+  readonly holderHandle: string;
+  readonly mintedAtIso: string;
+  readonly sourceCommentId: string;
+}
+
 export type OfferStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN';
 
 /**
@@ -164,7 +178,8 @@ export type LedgerEvent =
   | { readonly kind: 'offer_made'; readonly offer: OfferInput }
   | { readonly kind: 'offer_withdrawn'; readonly offerId: string; readonly bidderHandle: string }
   | { readonly kind: 'offer_declined'; readonly offerId: string; readonly ownerHandle: string }
-  | { readonly kind: 'offer_accepted'; readonly offerId: string; readonly ownerHandle: string; readonly listing: CreateListingInput };
+  | { readonly kind: 'offer_accepted'; readonly offerId: string; readonly ownerHandle: string; readonly listing: CreateListingInput }
+  | { readonly kind: 'badge_transferred'; readonly idolHandle: string; readonly fromHandle: string; readonly toHandle: string; readonly atIso: string };
 
 export type LedgerEventResult =
   | { readonly kind: 'comment'; readonly outcome: CommentProcessingOutcome }
@@ -176,7 +191,8 @@ export type LedgerEventResult =
   | { readonly kind: 'lot_ad_set'; readonly plotIndex: number; readonly ad: LotAd | null }
   | { readonly kind: 'offer_made'; readonly offer: PropertyOffer }
   | { readonly kind: 'offer_closed'; readonly offer: PropertyOffer }
-  | { readonly kind: 'offer_accepted'; readonly offer: PropertyOffer; readonly listing: MarketListing };
+  | { readonly kind: 'offer_accepted'; readonly offer: PropertyOffer; readonly listing: MarketListing }
+  | { readonly kind: 'badge_transferred'; readonly badge: FounderBadge };
 
 export interface CityState {
   readonly config: CityLedgerConfig;
@@ -206,6 +222,8 @@ export interface CityState {
   readonly tokenBalancesMicro: Map<string, bigint>;
   readonly listings: Map<string, MarketListing>;
   readonly offers: Map<string, PropertyOffer>;
+  /** Captain tags by idol: at most one per idol, ever. */
+  readonly founderBadges: Map<string, FounderBadge>;
   readonly settledTxRefs: Set<string>;
   /** Layout epochs (A3): which epoch the map belongs to and how many times it was rebuilt. */
   readonly layoutEpoch: { epoch: number; rebuilds: number; propertiesAtLastRebuild: number };
@@ -249,6 +267,7 @@ export function createCityState(config: CityLedgerConfig = DEFAULT_LEDGER_CONFIG
     tokenBalancesMicro: new Map(),
     listings: new Map(),
     offers: new Map(),
+    founderBadges: new Map(),
     settledTxRefs: new Set(),
     layoutEpoch: { epoch: Number.NEGATIVE_INFINITY, rebuilds: 0, propertiesAtLastRebuild: 0 },
     countedCommentsByHandle: new Map(),
@@ -506,6 +525,18 @@ export function applyCommentEvent(state: CityState, event: InstagramCommentEvent
   addXp(state.countedCommentsByHandle, fan, 1);
   const idolFans = state.fansByIdol.get(idolHandle) ?? 0;
 
+  // Fan #1 brought this idol in: the captain tag is issued here, once per idol, forever.
+  const becameCaptain = newFan && idolFans === 1 && !state.founderBadges.has(idolHandle);
+  if (becameCaptain) {
+    state.founderBadges.set(idolHandle, {
+      idolHandle,
+      founderHandle: fan,
+      holderHandle: fan,
+      mintedAtIso: new Date(event.receivedAtMs).toISOString(),
+      sourceCommentId: parsed.commentId,
+    });
+  }
+
   const firstComment = !state.activeHandles.has(fan);
   let tokensGrantedMicro = 0n;
   if (firstComment) {
@@ -539,6 +570,7 @@ export function applyCommentEvent(state: CityState, event: InstagramCommentEvent
       xpGained,
       newFan,
       idolFans,
+      becameCaptain,
       reason: newFan ? `@${fan} is now fan #${idolFans} of @${idolHandle}.` : `@${fan} supported @${idolHandle} again.`,
     };
   }
@@ -553,7 +585,7 @@ export function applyCommentEvent(state: CityState, event: InstagramCommentEvent
     commentId: parsed.commentId,
     atMs: event.receivedAtMs,
   });
-  return { status: 'MINTED_NEW_LAND', land: home, idol, xpGained, newFan, idolFans, tokensGrantedMicro };
+  return { status: 'MINTED_NEW_LAND', land: home, idol, xpGained, newFan, idolFans, becameCaptain, tokensGrantedMicro };
 }
 
 function requireListing(state: CityState, listingId: string): MarketListing {
@@ -576,10 +608,13 @@ export function applyListingCreated(state: CityState, input: CreateListingInput)
       (l) => l.plotIndex === input.plotIndex && (l.status === 'OPEN' || l.status === 'LOCKED_ESCROW')
     );
 
+  const badgeIdol = input.badgeIdol ?? null;
   const listing = createMarketListing(input, {
     land,
     sellerBalanceMicro: state.tokenBalancesMicro.get(input.sellerHandle) ?? 0n,
     plotAlreadyListed,
+    badgeHolder: badgeIdol === null ? undefined : state.founderBadges.get(badgeIdol)?.holderHandle,
+    badgeAlreadyListed: badgeIdol !== null && badgeIsListed(state, badgeIdol),
   });
 
   if (listing.assetType === 'NEFA_PACK' && listing.tokenAmountMicro !== null) {
@@ -669,6 +704,12 @@ export function applyPaymentSettled(state: CityState, proof: SettlementProof): S
     state.lotAds.delete(settled.plotIndex);
   } else if (settled.assetType === 'NEFA_PACK' && settled.tokenAmountMicro !== null) {
     addTokens(state, proof.buyerHandle, settled.tokenAmountMicro);
+  } else if (settled.assetType === 'FOUNDER_BADGE' && settled.badgeIdol !== null) {
+    const badge = state.founderBadges.get(settled.badgeIdol);
+    if (!badge || badge.holderHandle !== settled.sellerHandle) {
+      throw new MarketError('SELLER_NOT_OWNER', `Seller no longer holds the captain tag of @${settled.badgeIdol}.`);
+    }
+    state.founderBadges.set(badge.idolHandle, { ...badge, holderHandle: proof.buyerHandle });
   } else {
     throw new MarketError('INVALID_ASSET', `Listing ${settled.listingId} has no transferable asset.`);
   }
@@ -676,6 +717,38 @@ export function applyPaymentSettled(state: CityState, proof: SettlementProof): S
   state.listings.set(settled.listingId, settled);
   state.settledTxRefs.add(ref);
   return receipt;
+}
+
+/** A tag that is for sale (or being paid for) cannot also be given away. */
+function badgeIsListed(state: CityState, idolHandle: string): boolean {
+  for (const l of state.listings.values()) {
+    if (l.badgeIdol === idolHandle && (l.status === 'OPEN' || l.status === 'LOCKED_ESCROW')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** The holder gives the captain tag to another player. */
+export function applyBadgeTransfer(state: CityState, idolHandle: string, fromHandle: string, toHandle: string): FounderBadge {
+  assertPlayer(state, fromHandle);
+  assertPlayer(state, toHandle);
+  const badge = state.founderBadges.get(idolHandle);
+  if (!badge) {
+    throw new MarketError('INVALID_ASSET', `@${idolHandle} has no captain tag yet.`);
+  }
+  if (badge.holderHandle !== fromHandle) {
+    throw new MarketError('SELLER_NOT_OWNER', `@${fromHandle} does not hold the captain tag of @${idolHandle}.`);
+  }
+  if (toHandle === fromHandle) {
+    throw new MarketError('WASH_TRADE', 'You already hold this tag.');
+  }
+  if (badgeIsListed(state, idolHandle)) {
+    throw new MarketError('ALREADY_LISTED', 'Cancel the sale before giving this tag away.');
+  }
+  const moved: FounderBadge = { ...badge, holderHandle: toHandle };
+  state.founderBadges.set(idolHandle, moved);
+  return moved;
 }
 
 function requirePendingOffer(state: CityState, offerId: string): PropertyOffer {
@@ -798,6 +871,8 @@ export function applyLedgerEvent(state: CityState, event: LedgerEvent): LedgerEv
       return { kind: 'offer_closed', offer: applyOfferDeclined(state, event.offerId, event.ownerHandle) };
     case 'offer_accepted':
       return { kind: 'offer_accepted', ...applyOfferAccepted(state, event.offerId, event.ownerHandle, event.listing) };
+    case 'badge_transferred':
+      return { kind: 'badge_transferred', badge: applyBadgeTransfer(state, event.idolHandle, event.fromHandle, event.toHandle) };
     default: {
       const exhaustive: never = event;
       throw new Error(`Unknown ledger event: ${JSON.stringify(exhaustive, (_k, v: unknown) => (typeof v === 'bigint' ? v.toString() : v))}`);

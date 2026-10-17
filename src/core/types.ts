@@ -10,7 +10,7 @@ export type FandomCategory = 'ARTIST' | 'CLUB' | 'INFLUENCER' | 'ATHLETE' | 'UNL
 
 export type PaymentMethod = 'PIX' | 'USDT' | 'USDC' | 'BTC';
 
-export type ListingAssetType = 'LAND_PLOT' | 'NEFA_PACK';
+export type ListingAssetType = 'LAND_PLOT' | 'NEFA_PACK' | 'FOUNDER_BADGE';
 
 export type ListingStatus = 'OPEN' | 'LOCKED_ESCROW' | 'SETTLED' | 'CANCELLED';
 
@@ -111,6 +111,8 @@ interface AcceptedComment {
   /** First time this fan named this idol. */
   readonly newFan: boolean;
   readonly idolFans: number;
+  /** This fan brought the idol into the city and received its captain tag. */
+  readonly becameCaptain: boolean;
 }
 
 export type CommentProcessingOutcome =
@@ -136,6 +138,8 @@ export interface MarketListing {
   readonly assetType: ListingAssetType;
   readonly plotIndex: number | null;
   readonly tokenAmountMicro: bigint | null;
+  /** The idol whose captain tag is for sale (FOUNDER_BADGE only). */
+  readonly badgeIdol: string | null;
   readonly priceBrlCents: bigint;
   readonly priceUsdtMicro: bigint;
   readonly priceBtcSats: bigint;

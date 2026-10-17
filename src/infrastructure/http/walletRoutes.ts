@@ -13,6 +13,8 @@
  *   DELETE /api/v1/me/lots/:plot/ad
  *   POST /api/v1/properties/:plot/offers { amountBrlCents } make an offer
  *   POST /api/v1/me/offers/:id/accept|decline|withdraw
+ *   POST /api/v1/me/badges/:idol/transfer { toHandle } give a captain tag away
+ *   POST /api/v1/me/badges/:idol/list     { priceBrlCents } put a captain tag up for sale
  *
  * State-changing routes need the session cookie (HttpOnly, SameSite=Lax) and
  * the `X-Naoeumfa-Client: web` header, which a cross-site form cannot send
@@ -47,6 +49,7 @@ const LISTING_CANCEL_ROUTE = /^\/api\/v1\/me\/listings\/(lst_[0-9a-z_]{1,40})\/c
 const OFFER_ROUTE = /^\/api\/v1\/properties\/(\d{1,10})\/offers$/;
 const OFFER_DECISION_ROUTE = /^\/api\/v1\/me\/offers\/(off_[0-9a-f]{16})\/(accept|decline|withdraw)$/;
 const LOT_AD_ROUTE = /^\/api\/v1\/me\/lots\/(\d{1,10})\/ad$/;
+const BADGE_ROUTE = /^\/api\/v1\/me\/badges\/([a-z0-9._]{1,30})\/(transfer|list)$/;
 
 /** CSRF: the app's own header, and no foreign Origin outside the demo's dev proxy. */
 export function requireAppClient(config: AppConfig, req: IncomingMessage): void {
@@ -208,6 +211,25 @@ export async function handleWalletRoute(ctx: WalletContext, req: IncomingMessage
       }
       throw err;
     }
+  }
+
+  const badge = req.method === 'POST' ? BADGE_ROUTE.exec(url.pathname) : null;
+  if (badge) {
+    requireAppClient(config, req);
+    const handle = requireSession(auth, req);
+    const [, idolHandle, action] = badge;
+    const body = await readJsonObject(req);
+    if (action === 'transfer') {
+      const toHandle = typeof body.toHandle === 'string' ? normalizeInstagramHandle(body.toHandle) : null;
+      if (!toHandle) {
+        throw new HttpError(400, 'INVALID_HANDLE', 'Enter a valid Instagram @handle.');
+      }
+      sendJson(res, 200, city.transferBadge(handle, idolHandle, toHandle));
+      return true;
+    }
+    const listing = city.listBadge(handle, idolHandle, readAmount(body.priceBrlCents, 'priceBrlCents'));
+    sendJson(res, 201, { listingId: listing.listingId });
+    return true;
   }
 
   const decision = req.method === 'POST' ? OFFER_DECISION_ROUTE.exec(url.pathname) : null;

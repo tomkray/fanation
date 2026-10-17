@@ -76,6 +76,13 @@ function assertInvariants(state: Readonly<CityState>): void {
   const settled = [...state.listings.values()].filter((l) => l.status === 'SETTLED');
   expect(new Set(settled.map((l) => l.externalTxRef)).size).toBe(settled.length);
   expect(state.settledTxRefs.size).toBe(settled.length);
+  // Captain tags: one per idol, issued to a real fan of that idol, never held by the official account.
+  for (const badge of state.founderBadges.values()) {
+    expect(state.fanEdges.has(`${badge.founderHandle}>${badge.idolHandle}`)).toBe(true);
+    expect(badge.holderHandle).not.toBe(OFFICIAL);
+  }
+  const listedTags = [...state.listings.values()].filter((l) => l.assetType === 'FOUNDER_BADGE' && (l.status === 'OPEN' || l.status === 'LOCKED_ESCROW'));
+  expect(new Set(listedTags.map((l) => l.badgeIdol)).size).toBe(listedTags.length);
   // The official account holds nothing.
   expect(state.tokenBalancesMicro.get(OFFICIAL) ?? 0n).toBe(0n);
   expect(state.reputationXpByHandle.get(OFFICIAL) ?? 0).toBe(0);
@@ -92,6 +99,7 @@ function snapshot(state: Readonly<CityState>): unknown {
     lands: state.lands.map((l) => [l.plotIndex, l.minterHandle, l.ownerHandle]),
     listings: sortMap(state.listings).map(([k, l]) => [k, l.status, l.buyerHandle, l.externalTxRef]),
     offers: sortMap(state.offers).map(([k, o]) => [k, o.status, o.listingId]),
+    badges: sortMap(state.founderBadges).map(([k, b]) => [k, b.founderHandle, b.holderHandle]),
     minted: state.tokenomics.fanMintedMicro.toString(),
     seasonPaid: state.tokenomics.seasonPaidMicro.toString(),
   };
@@ -153,8 +161,15 @@ describe('the reducer against cheating', () => {
             nowIso: '',
           })
         );
-      } else if (roll < 0.7) {
+      } else if (roll < 0.67) {
         attempt(() => live.listProperty(someone, Math.floor(random() * Math.max(1, state.lands.length + 2)), 5_000n));
+      } else if (roll < 0.7) {
+        // Captain tags: given away or listed by the holder, or by someone pretending to be.
+        const badge = pick([...state.founderBadges.values()]);
+        if (badge) {
+          const actor = random() < 0.6 ? badge.holderHandle : someone;
+          attempt(() => (random() < 0.5 ? live.transferBadge(actor, badge.idolHandle, pick(people)) : live.listBadge(actor, badge.idolHandle, 3_000n)));
+        }
       } else if (roll < 0.78) {
         const listing = pick([...state.listings.values()]);
         if (listing) {

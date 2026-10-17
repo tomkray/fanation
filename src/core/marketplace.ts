@@ -36,6 +36,8 @@ export interface CreateListingInput {
   readonly assetType: ListingAssetType;
   readonly plotIndex: number | null;
   readonly tokenAmountMicro: bigint | null;
+  /** FOUNDER_BADGE only: the idol whose captain tag is sold. Absent in records written before tags. */
+  readonly badgeIdol?: string | null;
   readonly priceBrlCents: bigint;
   readonly priceUsdtMicro: bigint;
   readonly priceBtcSats: bigint;
@@ -47,6 +49,9 @@ export interface ListingContext {
   readonly land: LandPlot | undefined;
   readonly sellerBalanceMicro: bigint;
   readonly plotAlreadyListed: boolean;
+  /** Who holds the captain tag of `badgeIdol` (undefined when there is no such tag). */
+  readonly badgeHolder?: string;
+  readonly badgeAlreadyListed?: boolean;
 }
 
 export interface CheckoutRequest {
@@ -125,6 +130,17 @@ export function createMarketListing(input: CreateListingInput, ctx: ListingConte
         throw new MarketError('INSUFFICIENT_BALANCE', 'Insufficient $NEFA balance to escrow the pack.');
       }
       break;
+    case 'FOUNDER_BADGE':
+      if (!input.badgeIdol || ctx.badgeHolder === undefined) {
+        throw new MarketError('INVALID_ASSET', 'FOUNDER_BADGE listing needs an existing captain tag.');
+      }
+      if (ctx.badgeHolder !== input.sellerHandle) {
+        throw new MarketError('SELLER_NOT_OWNER', `@${input.sellerHandle} does not hold the captain tag of @${input.badgeIdol}.`);
+      }
+      if (ctx.badgeAlreadyListed) {
+        throw new MarketError('ALREADY_LISTED', `The captain tag of @${input.badgeIdol} is already for sale.`);
+      }
+      break;
     default: {
       const exhaustive: never = input.assetType;
       throw new MarketError('INVALID_ASSET', `Unsupported assetType: ${String(exhaustive)}`);
@@ -137,6 +153,7 @@ export function createMarketListing(input: CreateListingInput, ctx: ListingConte
     assetType: input.assetType,
     plotIndex: input.assetType === 'LAND_PLOT' ? input.plotIndex : null,
     tokenAmountMicro: input.assetType === 'NEFA_PACK' ? input.tokenAmountMicro : null,
+    badgeIdol: input.assetType === 'FOUNDER_BADGE' ? input.badgeIdol ?? null : null,
     priceBrlCents: input.priceBrlCents,
     priceUsdtMicro: input.priceUsdtMicro,
     priceBtcSats: input.priceBtcSats,

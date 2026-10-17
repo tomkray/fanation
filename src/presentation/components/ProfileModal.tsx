@@ -54,6 +54,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
   const [prices, setPrices] = useState<Record<number, string>>({});
   const [sendTo, setSendTo] = useState('');
   const [sendAmount, setSendAmount] = useState('');
+  const [badgeTo, setBadgeTo] = useState<Record<string, string>>({});
+  const [badgePrice, setBadgePrice] = useState<Record<string, string>>({});
 
   const run = async (label: string, action: () => Promise<unknown>): Promise<void> => {
     setBusy(true);
@@ -221,6 +223,77 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
           </ul>
         </section>
 
+        {me.badges.length > 0 && (
+          <section className="profile__section" aria-label="Tags de capitão">
+            <h3 className="title-sm">🎖️ Tuas tags de capitão</h3>
+            <p className="caption">Você trouxe esse ídolo pra cidade, ou comprou a tag de quem trouxe. Dá pra dar de presente ou vender.</p>
+            <ul className="listings">
+              {me.badges.map((b) => (
+                <li key={b.idolHandle} className="listing listing--property">
+                  <div>
+                    <strong>Capitão de @{b.idolHandle}</strong>
+                    <span className="caption">
+                      {b.founderHandle === me.handle ? 'Você fundou' : `Fundado por @${b.founderHandle}`}
+                      {b.listingId ? ' · à venda' : ''}
+                    </span>
+                  </div>
+                  {b.listingId ? (
+                    <button type="button" className="button button--secondary" disabled={busy} onClick={() => void run('Venda da tag cancelada.', () => api.cancelListing(b.listingId as string))}>
+                      Cancelar venda
+                    </button>
+                  ) : (
+                    <span className="listing__actions">
+                      <span className="inline-form">
+                        <input
+                          className="field__input field__input--compact"
+                          placeholder="@amigo"
+                          aria-label={`Dar a tag de @${b.idolHandle} para`}
+                          value={badgeTo[b.idolHandle] ?? ''}
+                          onChange={(e) => setBadgeTo({ ...badgeTo, [b.idolHandle]: e.target.value })}
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          maxLength={31}
+                        />
+                        <button
+                          type="button"
+                          className="button button--ghost"
+                          disabled={busy || !(badgeTo[b.idolHandle] ?? '').trim()}
+                          onClick={() => void run(`Tag de @${b.idolHandle} enviada.`, () => api.transferBadge(b.idolHandle, badgeTo[b.idolHandle] ?? ''))}
+                        >
+                          Dar
+                        </button>
+                      </span>
+                      <span className="inline-form">
+                        <input
+                          className="field__input field__input--compact"
+                          inputMode="decimal"
+                          placeholder="R$ preço"
+                          aria-label={`Preço da tag de @${b.idolHandle}`}
+                          value={badgePrice[b.idolHandle] ?? ''}
+                          onChange={(e) => setBadgePrice({ ...badgePrice, [b.idolHandle]: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          className="button button--primary"
+                          disabled={busy || !centsFromInput(badgePrice[b.idolHandle] ?? '')}
+                          onClick={() => {
+                            const cents = centsFromInput(badgePrice[b.idolHandle] ?? '');
+                            if (cents) {
+                              void run('Tag colocada à venda.', () => api.listBadge(b.idolHandle, cents));
+                            }
+                          }}
+                        >
+                          Vender
+                        </button>
+                      </span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section className="profile__section" aria-label="Enviar $NEFA">
           <h3 className="title-sm">Enviar $NEFA</h3>
           <form
@@ -239,7 +312,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ me, onChanged, onSho
               Send
             </button>
           </form>
-          <p className="caption">XP is earned and stays yours forever; only $NEFA and properties can change hands.</p>
+          <p className="caption">XP se ganha e fica contigo pra sempre; só $NEFA, casas e tags de capitão mudam de mão.</p>
         </section>
 
         <footer className="profile__footer">

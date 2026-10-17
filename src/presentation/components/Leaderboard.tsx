@@ -220,6 +220,11 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges
                       </strong>
                       <span className="caption">
                         {idol.displayName !== `@${idol.fandomHandle}` && <span className="identity__handle">@{idol.fandomHandle} · </span>}
+                        {idol.captainHandle && (
+                          <span className="lb-captain" title={`Capitão de @${idol.fandomHandle}: trouxe o ídolo pra cidade`}>
+                            🎖️ @{idol.captainHandle} ·{' '}
+                          </span>
+                        )}
                         {RARITY_LABELS[architectureBand(visualClassFor(idol.fans, idol.footprint)).rarity]} · {CLASS_LABELS[idol.propertyClass]} · {formatCompact(idol.fans)} fãs
                       </span>
                     </span>
