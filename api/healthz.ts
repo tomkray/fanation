@@ -2,7 +2,7 @@
 
 export const config = { runtime: 'edge' };
 
-const CITY_ORIGIN = (typeof process !== 'undefined' && (process.env.NAOEUMFA_CITY_ORIGIN ?? process.env.FANATION_CITY_ORIGIN)?.trim()) || 'https://designs-royal-drink-bar.trycloudflare.com';
+const CITY_ORIGIN = (typeof process !== 'undefined' && (process.env.NAOEUMFA_CITY_ORIGIN ?? process.env.FANATION_CITY_ORIGIN)?.trim()) || 'https://withdrawal-wine-existence-assistant.trycloudflare.com';
 
 export default async function handler(): Promise<Response> {
   try {
