@@ -257,76 +257,21 @@ ul {
 .home-search {
   position: fixed;
   z-index: 21;
-  width: 44px;
-  height: 44px;
+  top: calc(var(--space-xs) + var(--topbar-height) + var(--space-xs));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(320px, calc(100vw - 2 * var(--panel-width) - 32px));
   display: flex;
   flex-direction: column;
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
-  opacity: 0;
-  cursor: grab;
-  transition: opacity 160ms ease, width 180ms ease, height 180ms ease;
-}
-
-.home-search:hover,
-.home-search:focus-within,
-.home-search--open {
-  width: min(400px, calc(100vw - 2 * var(--panel-width) - 48px));
-  height: auto;
-  gap: var(--space-xs);
+  gap: var(--space-2xs);
   padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-sm);
-  overflow: visible;
-  opacity: 1;
-}
-
-.home-search__grip {
-  position: absolute;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-pill);
-  color: var(--color-text-main);
-  background: transparent;
-  font-size: 18px;
-}
-
-.home-search:hover .home-search__grip,
-.home-search:focus-within .home-search__grip,
-.home-search--open .home-search__grip {
-  position: static;
-  width: auto;
-  height: 24px;
-  align-self: flex-start;
-  padding: 0 var(--space-2xs);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.home-search__label,
-.home-search__row,
-.home-search__note {
-  display: none;
-}
-
-.home-search:hover .home-search__label,
-.home-search:focus-within .home-search__label,
-.home-search--open .home-search__label,
-.home-search:hover .home-search__row,
-.home-search:focus-within .home-search__row,
-.home-search--open .home-search__row,
-.home-search:hover .home-search__note,
-.home-search:focus-within .home-search__note,
-.home-search--open .home-search__note {
-  display: flex;
+  background: rgba(22, 22, 26, 0.55);
 }
 
 .home-search__label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -1627,10 +1572,9 @@ button.feed__button:hover {
     display: none;
   }
 
-  .home-search:hover,
-  .home-search:focus-within,
-  .home-search--open {
-    width: min(400px, calc(100% - 16px));
+  .home-search {
+    top: calc(var(--space-xs) + var(--topbar-height) + var(--space-2xs));
+    width: min(320px, calc(100% - 16px));
   }
 
   /* The tab bar carries the Planet toggle on phones. */
