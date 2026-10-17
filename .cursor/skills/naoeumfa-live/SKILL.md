@@ -93,6 +93,12 @@ comentários*, *atualiza a cidade*, or a new Instagram permalink.
 bash scripts/live-status.sh
 ```
 
+## Official account
+
+`@naoeumfa` runs the game and never plays it: no home, XP, $NEFA, fans, idol
+status, trades, ads or login (reducer `assertPlayer`, A1). When sweeping a post,
+skip its own comments; never put it in a Muse batch.
+
 ## Forbidden
 
 - A second “manual avatar pipeline” beside `AvatarService`.

@@ -13,6 +13,8 @@ Tagging friends after joining pays +1 XP per new friend, once per friend ever an
 
 A fan belongs to the district they moved into; their later XP also grows that fandom.
 
+**The official account never plays.** `@naoeumfa` runs the game: its comments never mint or score, naming or tagging it counts for nothing, and the reducer refuses it as the sender or receiver of $NEFA, a seller, buyer, bidder or advertiser. It never signs in. It has no home, XP, $NEFA or fans, and never appears in a ranking or the live feed.
+
 ## A2 — Hostile Boundary
 Every inbound byte is hostile until verified.
 1. Meta webhooks: `X-Hub-Signature-256` (HMAC-SHA256 over the raw body) and the `hub.verify_token` handshake. Payment callbacks: HMAC over the raw body.
