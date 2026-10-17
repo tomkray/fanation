@@ -13,6 +13,8 @@ export interface JournalRecord {
   readonly atIso: string;
   readonly source: CommentSourceName | 'market' | 'payment' | 'wallet';
   readonly event: LedgerEvent;
+  /** SHA-256 chain link over the previous link and this record's body (see ledgerChain). */
+  readonly hash?: string;
 }
 
 export interface EventJournal {
@@ -39,6 +41,11 @@ function decode(_key: string, value: unknown): unknown {
     }
   }
   return value;
+}
+
+/** The exact bytes a record's hash covers: everything but the hash, in a fixed key order. */
+export function serializeRecordBody(record: JournalRecord): string {
+  return JSON.stringify({ seq: record.seq, atIso: record.atIso, source: record.source, event: record.event }, encode);
 }
 
 export class FileEventJournal implements EventJournal {

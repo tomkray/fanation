@@ -64,7 +64,13 @@ import {
   seasonPrizeMicro,
   splitPack,
 } from '../core/tokenomics.js';
-import { EventJournal, JournalRecord } from './persistence/eventJournal.js';
+import { EventJournal, JournalRecord, serializeRecordBody } from './persistence/eventJournal.js';
+import { LedgerChain, LedgerHead, LedgerProof } from './persistence/ledgerChain.js';
+
+/** One record's inclusion proof; `record` (its exact hashed bytes) only for the people in it. */
+export interface LedgerProofView extends LedgerProof {
+  readonly record: string | null;
+}
 
 export const DEFAULT_MOMENTUM_WINDOW_MS = 3_600_000;
 
@@ -198,6 +204,9 @@ export class CityService {
   private lastMomentumAt = Number.NEGATIVE_INFINITY;
   private seq = 0;
   private version = 0;
+  private readonly chain = new LedgerChain();
+  /** Hashed bytes and the @s involved, for market, payment and wallet records (comments are public on Instagram). */
+  private readonly ownBodies = new Map<number, { readonly body: string; readonly parties: readonly string[] }>();
   private summaryCache: { readonly version: number; readonly value: WorldSummaryDto } | null = null;
   private standingsCache: { readonly version: number; readonly value: FandomClubStats[]; readonly rankByHandle: Map<string, number> } | null = null;
 
@@ -218,6 +227,11 @@ export class CityService {
     const records = this.journal.load();
     for (const record of records) {
       try {
+        // The hash is checked before the event is trusted: an edited line never reaches the reducer.
+        const body = serializeRecordBody(record);
+        const parties = this.partiesOf(record.event);
+        this.chain.append(record.seq, body, record.hash);
+        this.rememberBody(record, body, parties);
         const before = this.state.lands.length;
         const result = applyLedgerEvent(this.state, record.event);
         if (!this.reindexAfterRebuild()) {
@@ -233,8 +247,56 @@ export class CityService {
       }
     }
     this.version = this.seq;
-    logger.info('city_replayed', { records: records.length, properties: this.state.lands.length });
+    logger.info('city_replayed', { records: records.length, properties: this.state.lands.length, ledgerHead: this.chain.headInfo.chainHash });
     return records.length;
+  }
+
+  /** The public fingerprint of the whole book: publish it, and any later rewrite stops matching. */
+  ledgerHead(): LedgerHead {
+    return this.chain.headInfo;
+  }
+
+  /** Proves record `seq` is in the book. Its bytes are shown only to the @s it involves. */
+  ledgerProof(seq: number, viewer: string | null): LedgerProofView | null {
+    const proof = this.chain.proof(seq);
+    if (!proof) {
+      return null;
+    }
+    const own = this.ownBodies.get(seq);
+    return { ...proof, record: own && viewer !== null && own.parties.includes(viewer) ? own.body : null };
+  }
+
+  private partiesOf(event: LedgerEvent): string[] {
+    switch (event.kind) {
+      case 'comment':
+        return [];
+      case 'listing_created':
+        return [event.input.sellerHandle];
+      case 'listing_cancelled':
+        return [event.sellerHandle];
+      case 'checkout_locked': {
+        const seller = this.state.listings.get(event.request.listingId)?.sellerHandle;
+        return seller ? [event.request.buyerHandle, seller] : [event.request.buyerHandle];
+      }
+      case 'payment_settled': {
+        const seller = this.state.listings.get(event.proof.listingId)?.sellerHandle;
+        return seller ? [event.proof.buyerHandle, seller] : [event.proof.buyerHandle];
+      }
+      case 'token_transferred':
+        return [event.transfer.fromHandle, event.transfer.toHandle];
+      case 'lot_ad_set':
+        return [event.ownerHandle];
+      default: {
+        const exhaustive: never = event;
+        throw new Error(`Unknown ledger event ${JSON.stringify(exhaustive)}`);
+      }
+    }
+  }
+
+  private rememberBody(record: JournalRecord, body: string, parties: readonly string[]): void {
+    if (record.event.kind !== 'comment') {
+      this.ownBodies.set(record.seq, { body, parties });
+    }
   }
 
   subscribe(listener: CityChangeListener): () => void {
@@ -653,8 +715,12 @@ export class CityService {
    */
   private commit(event: LedgerEvent, source: JournalRecord['source']): LedgerEventResult {
     const before = this.state.lands.length;
+    // Parties are read before applying: a settlement may move the listing it names.
+    const parties = this.partiesOf(event);
     const result = applyLedgerEvent(this.state, event);
-    const record: JournalRecord = { seq: this.seq + 1, atIso: new Date().toISOString(), source, event };
+    const unsigned: JournalRecord = { seq: this.seq + 1, atIso: new Date().toISOString(), source, event };
+    const body = serializeRecordBody(unsigned);
+    const record: JournalRecord = { ...unsigned, hash: this.chain.nextLink(body) };
     try {
       this.journal.append(record);
     } catch (err) {
@@ -662,6 +728,8 @@ export class CityService {
       this.onFatal(fatal);
       throw fatal;
     }
+    this.chain.append(record.seq, body, record.hash);
+    this.rememberBody(record, body, parties);
     this.seq = record.seq;
     this.version = record.seq;
     if (this.reindexAfterRebuild()) {

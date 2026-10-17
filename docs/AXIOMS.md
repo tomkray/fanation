@@ -39,6 +39,8 @@ BRL cents, USDT/USDC micro-units, BTC satoshis and $NEFA micro-units (6 decimals
 ## A6 — One Writer, Replayable State
 All state changes are ledger events appended to the journal before the API answers. Booting replays the journal from the first line; a line that no longer applies halts the boot instead of serving a different city. Simulated (demo) fans and real fans never share a journal.
 
+Every record carries `hash = SHA-256(previous hash ‖ 0x0a ‖ record bytes)`, starting from `SHA-256("naoeumfa.ledger.v1")`, and all records form one RFC 6962 Merkle tree. Replay recomputes each hash before the reducer sees the event, so an edited, inserted or reordered line halts the boot. `GET /api/v1/ledger/head` publishes the chain hash and Merkle root; `GET /api/v1/ledger/proof/:seq` proves one record is in the book with log2(n) hashes, and shows that record's bytes only to the @s it involves (payment references stay private). `npm run ledger:verify` rebuilds the head from the file alone. A dropped last record, or a rewrite of the whole book, is caught only against a head published earlier outside this machine — anchoring that head is the step that later moves to a public chain.
+
 ## A7 — One Global Ranking
 Every fandom — artists, clubs, creators, athletes and uncatalogued communities — competes in a single global ranking ordered by the reputation its fans earned for it; there are no divisions. Categories only filter the view. Movement (positions gained or lost, XP change in %) is measured against the ranking one momentum window ago and derived from comment times, so a replay shows the same movement. Perks: #1 light beam, top 3 medal rings, top 10 full-brightness district neon.
 

@@ -10,6 +10,8 @@
  *   GET  /api/v1/profiles/:handle     the same, by @handle
  *   GET  /api/v1/avatars/:handle      cached Instagram profile picture
  *   GET  /api/v1/stream               Server-Sent Events: `city` on every change
+ *   GET  /api/v1/ledger/head          chain hash + Merkle root of the whole book
+ *   GET  /api/v1/ledger/proof/:seq    inclusion proof of one record (its bytes only for the @s in it)
  *   GET  /api/v1/webhooks/instagram   Meta subscription handshake
  *   POST /api/v1/webhooks/instagram   Meta `comments` + Direct `messages` webhook (HMAC verified)
  *   POST /api/v1/market/checkout      lock a listing and return PIX / crypto instructions
@@ -39,7 +41,7 @@ import { AppConfig } from '../config.js';
 import { AvatarService } from '../instagram/avatarService.js';
 import { OfferError, OfferService } from '../market/offerService.js';
 import { header, HttpError, JSON_BODY_LIMIT, parseJson, readRawBody, sendError, sendJson } from './httpKit.js';
-import { handleWalletRoute, requireAppClient, requireSession, WalletContext } from './walletRoutes.js';
+import { handleWalletRoute, requireAppClient, requireSession, sessionHandle, WalletContext } from './walletRoutes.js';
 import { parseMuseBatch } from '../instagram/museBridge.js';
 import {
   parseMetaCommentWebhook,
@@ -92,6 +94,7 @@ const CHUNK_KEY_PATTERN = /^-?\d{1,6}:-?\d{1,6}$/;
 const PROPERTY_ROUTE = /^\/api\/v1\/properties\/(\d{1,10})$/;
 const PROFILE_ROUTE = /^\/api\/v1\/profiles\/([a-z0-9._]{1,30})$/;
 const AVATAR_ROUTE = /^\/api\/v1\/avatars\/([a-z0-9._]{1,30})$/;
+const LEDGER_PROOF_ROUTE = /^\/api\/v1\/ledger\/proof\/(\d{1,12})$/;
 const AD_REVIEW_ROUTE = /^\/api\/v1\/admin\/ads\/(ad_[0-9a-f]{16})\/(approve|reject)$/;
 
 export interface NaoeumfaServices {
@@ -251,6 +254,11 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
           const detail = city.profileDetail(profile[1], plot === undefined ? 0 : offers.pendingCount(plot));
           return detail ? sendJson(res, 200, detail) : sendError(res, 404, 'NOT_FOUND', 'This @ has no property yet.');
         }
+        const ledgerProof = req.method === 'GET' ? LEDGER_PROOF_ROUTE.exec(url.pathname) : null;
+        if (ledgerProof) {
+          const proof = city.ledgerProof(Number.parseInt(ledgerProof[1], 10), sessionHandle(auth, req));
+          return proof ? sendJson(res, 200, proof) : sendError(res, 404, 'NOT_FOUND', 'No such record.');
+        }
         const avatar = req.method === 'GET' ? AVATAR_ROUTE.exec(url.pathname) : null;
         if (avatar) {
           const image = avatars.read(avatar[1]);
@@ -309,6 +317,10 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
 
           case 'GET /api/v1/config':
             sendJson(res, 200, publicConfig);
+            return;
+
+          case 'GET /api/v1/ledger/head':
+            sendJson(res, 200, city.ledgerHead());
             return;
 
           case 'GET /api/v1/world':
