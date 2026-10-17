@@ -926,6 +926,28 @@ ul {
   flex-shrink: 0;
 }
 
+.topbar__ig {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-main);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.topbar__ig:hover,
+.topbar__ig:focus-visible {
+  background: var(--color-surface-hover);
+  color: var(--color-primary-on-dark);
+}
+
 /* Scrollable rows would otherwise be squeezed to zero height inside the flex panel. */
 .segmented--scroll {
   flex-shrink: 0;
@@ -1583,6 +1605,17 @@ button.feed__button:hover {
   }
 
   .topbar__me > span {
+    display: none;
+  }
+
+  /* Phones keep the Instagram glyph as a 44px target; the @ is in the aria-label. */
+  .topbar__ig {
+    width: var(--touch-target);
+    justify-content: center;
+    padding: 0;
+  }
+
+  .topbar__ig > span {
     display: none;
   }
 

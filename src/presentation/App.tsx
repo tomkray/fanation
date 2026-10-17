@@ -76,6 +76,7 @@ export const App: React.FC = () => {
   const [tokenomicsOpen, setTokenomicsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const session = useSession(summary?.version ?? 0);
+  const officialHandle = config?.login.officialHandle ?? 'naoeumfa';
   const instagramVerified = useMemo(
     () => new Set((summary?.instagramVerified ?? []).map((handle) => handle.toLowerCase())),
     [summary?.instagramVerified]
@@ -328,6 +329,20 @@ export const App: React.FC = () => {
               <strong>{formatInteger(summary?.totals.commentsProcessed ?? 0)}</strong> comentários
             </span>
           </span>
+          <a
+            className="topbar__ig"
+            href={`https://www.instagram.com/${officialHandle}/`}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label={`Abrir @${officialHandle} no Instagram`}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="2" />
+              <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+              <circle cx="17.3" cy="6.7" r="1.3" fill="currentColor" />
+            </svg>
+            <span>@{officialHandle}</span>
+          </a>
           <button
             type="button"
             className="button topbar__view"
