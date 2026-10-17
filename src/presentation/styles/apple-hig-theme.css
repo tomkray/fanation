@@ -154,6 +154,63 @@ ul {
   inset: 0;
 }
 
+/* Microscope ocular — planet view feels like looking down the lens at a chip-eye. */
+.microscope-ocular {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+}
+
+.microscope-ocular__glass {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 50% 48%,
+      transparent 0%,
+      transparent 38%,
+      rgba(4, 12, 18, 0.18) 46%,
+      rgba(2, 6, 12, 0.72) 58%,
+      rgba(0, 0, 0, 0.94) 72%,
+      #000 100%
+    );
+}
+
+.microscope-ocular__ring {
+  position: absolute;
+  width: min(78vmin, 920px);
+  height: min(78vmin, 920px);
+  border-radius: 50%;
+  border: 2px solid rgba(94, 234, 212, 0.22);
+  box-shadow:
+    0 0 0 14px rgba(8, 20, 28, 0.55),
+    0 0 40px rgba(34, 211, 238, 0.12),
+    inset 0 0 60px rgba(45, 212, 191, 0.08),
+    inset 0 0 120px rgba(0, 0, 0, 0.35);
+}
+
+.microscope-ocular__cross {
+  position: absolute;
+  width: min(78vmin, 920px);
+  height: min(78vmin, 920px);
+  opacity: 0.22;
+  background:
+    linear-gradient(90deg, transparent 49.6%, rgba(165, 243, 252, 0.55) 49.6%, rgba(165, 243, 252, 0.55) 50.4%, transparent 50.4%),
+    linear-gradient(0deg, transparent 49.6%, rgba(165, 243, 252, 0.55) 49.6%, rgba(165, 243, 252, 0.55) 50.4%, transparent 50.4%);
+  mask-image: radial-gradient(circle, transparent 36%, #000 37%, #000 52%, transparent 53%);
+  -webkit-mask-image: radial-gradient(circle, transparent 36%, #000 37%, #000 52%, transparent 53%);
+}
+
+.app--microscope .hud,
+.app--microscope .home-search,
+.app--microscope .toast {
+  opacity: 0.42;
+  transition: opacity 220ms ease;
+}
+
 .glass {
   background: var(--color-glass);
   backdrop-filter: var(--glass-blur);
@@ -924,6 +981,70 @@ ul {
 
 .topbar__view {
   flex-shrink: 0;
+}
+
+/* Discreet city ambient — speaker in the top bar; slider peeks on hover/focus. */
+.ambient-audio {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0;
+  min-height: var(--touch-target);
+}
+
+.ambient-audio__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease, opacity 120ms ease;
+  opacity: 0.72;
+}
+
+.ambient-audio__toggle:hover,
+.ambient-audio__toggle:focus-visible,
+.ambient-audio--open .ambient-audio__toggle {
+  color: var(--color-text-main);
+  background: var(--color-surface);
+  opacity: 1;
+}
+
+.ambient-audio--muted .ambient-audio__toggle {
+  opacity: 0.55;
+}
+
+.ambient-audio__slider {
+  display: flex;
+  align-items: center;
+  width: 0;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: width 160ms ease, max-width 160ms ease, opacity 140ms ease, margin 160ms ease;
+}
+
+.ambient-audio--open .ambient-audio__slider {
+  width: 88px;
+  max-width: 88px;
+  margin-left: 2px;
+  opacity: 1;
+}
+
+.ambient-audio__slider input[type='range'] {
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  accent-color: var(--color-primary-on-dark);
+  cursor: pointer;
 }
 
 .topbar__ig {

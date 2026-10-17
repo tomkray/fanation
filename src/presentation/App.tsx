@@ -24,6 +24,7 @@ import { LiveFeed } from './components/LiveFeed.js';
 import { MarketplaceModal } from './components/MarketplaceModal.js';
 import { PropertyCard, PropertyRef } from './components/PropertyCard.js';
 import { formatInteger } from './format.js';
+import { AmbientAudioControl } from './components/AmbientAudioControl.js';
 import { useCityAmbient } from './hooks/useCityAmbient.js';
 import { useWorld } from './hooks/useWorld.js';
 import { IsometricCityEngine, WorldView } from './three/IsometricCityEngine.js';
@@ -62,7 +63,7 @@ function takeLoginToken(): string | null {
 
 export const App: React.FC = () => {
   const { config, summary, store, status, error } = useWorld({ live: !MANUAL_FRAMES });
-  useCityAmbient(!CINEMATIC && !MANUAL_FRAMES);
+  const ambient = useCityAmbient(!CINEMATIC && !MANUAL_FRAMES);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<IsometricCityEngine | null>(null);
   const avatarsRef = useRef(false);
@@ -308,8 +309,15 @@ export const App: React.FC = () => {
   return (
     <AvatarsEnabled.Provider value={config?.avatars ?? false}>
       <InstagramVerified.Provider value={instagramVerified}>
-      <div className="app">
+      <div className={`app${view === 'planet' ? ' app--microscope' : ''}`}>
         <div ref={viewportRef} className="viewport" aria-label="Mundo 3D Não É Um Fã" />
+        {view === 'planet' && (
+          <div className="microscope-ocular" aria-hidden="true">
+            <div className="microscope-ocular__glass" />
+            <div className="microscope-ocular__ring" />
+            <div className="microscope-ocular__cross" />
+          </div>
+        )}
 
         <nav className="glass topbar">
           <BrandLockup />
@@ -318,6 +326,7 @@ export const App: React.FC = () => {
             <span className="live-pill__label">{status === 'live' ? 'Ao vivo' : status === 'connecting' ? 'Conectando…' : 'Reconectando…'}</span>
             {config?.demo && <span className="live-pill__demo">DEMO</span>}
           </span>
+          <AmbientAudioControl ambient={ambient} />
           <span className="topbar__stats">
             <span>
               <strong>{formatInteger(summary?.totals.properties ?? 0)}</strong> casas

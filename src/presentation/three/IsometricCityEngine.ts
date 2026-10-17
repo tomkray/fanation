@@ -7,10 +7,10 @@
  * idol to the places where their neighbourhood continued. Only the chunks the
  * camera sees are loaded; everything repeated is instanced.
  *
- * Planet view — zoom far enough out and the city gives way to the planet: one
- * light per ~500 m chunk of the world (height = population, colour = the
- * dominant district) and the names of the cities. The planet grows with the
- * population, so the cities always sit on its cap.
+ * Planet view — zoom far enough out and the city gives way to a microscope
+ * ocular: the world reads as a gigantic silicon eye (chip circuits as iris,
+ * pupil at Genesis). Chunk lights sit on the facing cap; the die spins under
+ * the lens as if disconnecting from the microscope.
  */
 
 import * as THREE from 'three';
@@ -30,6 +30,7 @@ import type { AdDto, ChunkSummaryDto, CitySummaryDto, PropertyDto, StandingDto, 
 import { InstancedPart } from './instancedPart.js';
 import { createMaterialLibrary, loadModelKit, loadTexturedKit, ModelKit, RuntimeMaterial, TexturedKit } from './modelKit.js';
 import { SkyAds } from './skyAds.js';
+import { createStylizedPlanet, type StylizedPlanet } from './stylizedPlanet.js';
 
 export type WorldView = 'city' | 'planet';
 
@@ -148,35 +149,6 @@ function hash01(a: number, b = 0, c = 0): number {
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
   h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
   return ((h ^ (h >>> 15)) >>> 0) / 4_294_967_296;
-}
-
-/** Smooth value noise for planet continents / clouds (deterministic, seamless on X). */
-function valueNoise2(x: number, y: number, seed: number): number {
-  const x0 = Math.floor(x);
-  const y0 = Math.floor(y);
-  const fx = x - x0;
-  const fy = y - y0;
-  const sx = fx * fx * (3 - 2 * fx);
-  const sy = fy * fy * (3 - 2 * fy);
-  const n00 = hash01(x0, y0, seed);
-  const n10 = hash01(x0 + 1, y0, seed);
-  const n01 = hash01(x0, y0 + 1, seed);
-  const n11 = hash01(x0 + 1, y0 + 1, seed);
-  return n00 * (1 - sx) * (1 - sy) + n10 * sx * (1 - sy) + n01 * (1 - sx) * sy + n11 * sx * sy;
-}
-
-function fbm2(x: number, y: number, seed: number, octaves = 5): number {
-  let amp = 0.5;
-  let freq = 1;
-  let sum = 0;
-  let norm = 0;
-  for (let i = 0; i < octaves; i += 1) {
-    sum += amp * valueNoise2(x * freq, y * freq, seed + i * 17);
-    norm += amp;
-    amp *= 0.5;
-    freq *= 2;
-  }
-  return sum / norm;
 }
 
 /** Owner's level is the finish: brighter neon as they level up, gold trim from level 10. */
@@ -353,6 +325,7 @@ export class IsometricCityEngine {
 
   private readonly planetGroup = new THREE.Group();
   private readonly planetBody: THREE.Group;
+  private readonly stylizedPlanet: StylizedPlanet;
   private planetLights: THREE.InstancedMesh | null = null;
   private planetChunks: readonly ChunkSummaryDto[] = [];
   private readonly cityLabels = new Map<string, Label>();
@@ -499,7 +472,8 @@ export class IsometricCityEngine {
     this.selection.visible = false;
     this.world.add(this.selection);
 
-    this.planetBody = this.createPlanetBody();
+    this.stylizedPlanet = createStylizedPlanet();
+    this.planetBody = this.stylizedPlanet.group;
     this.planetGroup.add(this.planetBody);
     this.planetGroup.visible = false;
     this.scene.add(this.planetGroup);
@@ -1883,259 +1857,6 @@ export class IsometricCityEngine {
 
   // ---------------------------------------------------------------- planet
 
-  /**
-   * Cinema-grade night planet: deep oceans, soft continents with relief,
-   * ice caps, city lights and veil clouds. Built as canvases so the sphere
-   * stays seamless and free of external assets.
-   */
-  private paintPlanetMaps(): {
-    readonly color: THREE.CanvasTexture;
-    readonly glow: THREE.CanvasTexture;
-    readonly clouds: THREE.CanvasTexture;
-    readonly bump: THREE.CanvasTexture;
-    readonly roughness: THREE.CanvasTexture;
-  } {
-    const width = 2048;
-    const height = 1024;
-    const make = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      return canvas;
-    };
-    const colorCanvas = make();
-    const glowCanvas = make();
-    const cloudCanvas = make();
-    const bumpCanvas = make();
-    const roughCanvas = make();
-    const colorCtx = colorCanvas.getContext('2d', { willReadFrequently: true });
-    const glowCtx = glowCanvas.getContext('2d');
-    const cloudCtx = cloudCanvas.getContext('2d');
-    const bumpCtx = bumpCanvas.getContext('2d');
-    const roughCtx = roughCanvas.getContext('2d');
-    if (!colorCtx || !glowCtx || !cloudCtx || !bumpCtx || !roughCtx) {
-      const blank = new THREE.CanvasTexture(colorCanvas);
-      return { color: blank, glow: blank, clouds: blank, bump: blank, roughness: blank };
-    }
-
-    const color = colorCtx.createImageData(width, height);
-    const bump = bumpCtx.createImageData(width, height);
-    const rough = roughCtx.createImageData(width, height);
-    const glow = glowCtx.createImageData(width, height);
-    const clouds = cloudCtx.createImageData(width, height);
-
-    const wrapX = (x: number) => ((x % width) + width) % width;
-    for (let y = 0; y < height; y += 1) {
-      const v = y / (height - 1);
-      const lat = v * 2 - 1;
-      const ice = Math.max(0, Math.abs(lat) - 0.72) / 0.28;
-      const iceSoft = ice * ice * (3 - 2 * ice);
-      for (let x = 0; x < width; x += 1) {
-        const u = x / width;
-        // Slightly denser longitude so continents wrap without a hard seam.
-        const nx = u * 6.2;
-        const ny = v * 3.4;
-        const landMask = fbm2(nx, ny, 41, 6);
-        const detail = fbm2(nx * 2.4 + 3.1, ny * 2.4 - 1.7, 73, 4);
-        const ridge = Math.abs(fbm2(nx * 1.6, ny * 1.6, 99, 3) * 2 - 1);
-        const elevation = landMask * 0.72 + detail * 0.2 + ridge * 0.08;
-        const isLand = elevation > 0.48;
-        const shore = 1 - Math.min(1, Math.abs(elevation - 0.48) * 9);
-
-        let r: number;
-        let g: number;
-        let b: number;
-        let heightByte: number;
-        let roughByte: number;
-        if (isLand) {
-          const highland = THREE.MathUtils.clamp((elevation - 0.55) / 0.35, 0, 1);
-          // Soft teal highlands → warm coastal plains (Pixar night-earth palette).
-          r = Math.round(18 + highland * 28 + (1 - highland) * 22);
-          g = Math.round(42 + highland * 18 + detail * 20);
-          b = Math.round(58 + highland * 10 + (1 - highland) * 16);
-          heightByte = Math.round(120 + elevation * 120 + ridge * 30);
-          roughByte = Math.round(168 + highland * 55);
-        } else {
-          const deep = THREE.MathUtils.clamp((0.48 - elevation) / 0.35, 0, 1);
-          r = Math.round(4 + (1 - deep) * 10 + shore * 8);
-          g = Math.round(18 + (1 - deep) * 28 + shore * 20);
-          b = Math.round(42 + (1 - deep) * 48 + shore * 30);
-          heightByte = Math.round(28 + (1 - deep) * 40);
-          roughByte = Math.round(38 + deep * 28);
-        }
-
-        // Polar ice with soft falloff over land and sea.
-        if (iceSoft > 0.01) {
-          const iceBlend = Math.min(1, iceSoft * (isLand ? 1.15 : 0.85));
-          r = Math.round(r * (1 - iceBlend) + (210 + detail * 30) * iceBlend);
-          g = Math.round(g * (1 - iceBlend) + (224 + detail * 20) * iceBlend);
-          b = Math.round(b * (1 - iceBlend) + (236 + detail * 12) * iceBlend);
-          heightByte = Math.round(heightByte * (1 - iceBlend) + 235 * iceBlend);
-          roughByte = Math.round(roughByte * (1 - iceBlend) + 55 * iceBlend);
-        }
-
-        // Subtle atmospheric haze toward the limbs of the equirect map.
-        const haze = Math.pow(Math.abs(lat), 2.4) * 0.08;
-        r = Math.min(255, Math.round(r + 40 * haze));
-        g = Math.min(255, Math.round(g + 60 * haze));
-        b = Math.min(255, Math.round(b + 90 * haze));
-
-        const i = (y * width + x) * 4;
-        color.data[i] = r;
-        color.data[i + 1] = g;
-        color.data[i + 2] = b;
-        color.data[i + 3] = 255;
-        bump.data[i] = heightByte;
-        bump.data[i + 1] = heightByte;
-        bump.data[i + 2] = heightByte;
-        bump.data[i + 3] = 255;
-        rough.data[i] = roughByte;
-        rough.data[i + 1] = roughByte;
-        rough.data[i + 2] = roughByte;
-        rough.data[i + 3] = 255;
-
-        // City lights: denser on land belts, warm vs cool mix, soft bloom.
-        let gr = 0;
-        let gg = 0;
-        let gb = 0;
-        if (isLand && iceSoft < 0.55) {
-          const lights = fbm2(nx * 18, ny * 18, 201, 3);
-          const belt = 1 - Math.min(1, Math.abs(lat) * 1.35);
-          if (lights > 0.62 && belt > 0.2) {
-            const strength = ((lights - 0.62) / 0.38) * belt;
-            const warm = fbm2(nx * 7, ny * 7, 211, 2) > 0.55;
-            if (warm) {
-              gr = Math.round(255 * strength);
-              gg = Math.round(170 * strength);
-              gb = Math.round(90 * strength);
-            } else {
-              gr = Math.round(110 * strength);
-              gg = Math.round(190 * strength);
-              gb = Math.round(255 * strength);
-            }
-          }
-        }
-        glow.data[i] = gr;
-        glow.data[i + 1] = gg;
-        glow.data[i + 2] = gb;
-        glow.data[i + 3] = 255;
-
-        // Soft cloud veil (alpha in RGB for MeshStandard map + opacity).
-        const cNoise = fbm2(nx * 1.8 + 9, ny * 1.8, 301, 5);
-        const cDetail = fbm2(nx * 5.5, ny * 5.5, 317, 3);
-        const cloudAmt = Math.max(0, cNoise * 0.75 + cDetail * 0.35 - 0.48);
-        const ca = Math.min(255, Math.round(cloudAmt * 255 * 1.55));
-        clouds.data[i] = 235;
-        clouds.data[i + 1] = 242;
-        clouds.data[i + 2] = 255;
-        clouds.data[i + 3] = ca;
-
-        // Cheap horizontal blur for lights: smear a neighbour so dots feel cinematic.
-        if (gr + gg + gb > 0) {
-          const left = (y * width + wrapX(x - 1)) * 4;
-          glow.data[left] = Math.max(glow.data[left], Math.round(gr * 0.45));
-          glow.data[left + 1] = Math.max(glow.data[left + 1], Math.round(gg * 0.45));
-          glow.data[left + 2] = Math.max(glow.data[left + 2], Math.round(gb * 0.45));
-        }
-      }
-    }
-
-    colorCtx.putImageData(color, 0, 0);
-    bumpCtx.putImageData(bump, 0, 0);
-    roughCtx.putImageData(rough, 0, 0);
-    glowCtx.putImageData(glow, 0, 0);
-    cloudCtx.putImageData(clouds, 0, 0);
-
-    const colorTex = new THREE.CanvasTexture(colorCanvas);
-    const glowTex = new THREE.CanvasTexture(glowCanvas);
-    const cloudTex = new THREE.CanvasTexture(cloudCanvas);
-    const bumpTex = new THREE.CanvasTexture(bumpCanvas);
-    const roughTex = new THREE.CanvasTexture(roughCanvas);
-    for (const texture of [colorTex, glowTex, cloudTex]) {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = 8;
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
-    }
-    for (const texture of [bumpTex, roughTex]) {
-      texture.anisotropy = 8;
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
-    }
-    return { color: colorTex, glow: glowTex, clouds: cloudTex, bump: bumpTex, roughness: roughTex };
-  }
-
-  private createPlanetBody(): THREE.Group {
-    const body = new THREE.Group();
-    const maps = this.paintPlanetMaps();
-    const surface = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 192, 128),
-      new THREE.MeshStandardMaterial({
-        map: maps.color,
-        bumpMap: maps.bump,
-        bumpScale: 0.045,
-        roughnessMap: maps.roughness,
-        roughness: 1,
-        metalness: 0.08,
-        emissiveMap: maps.glow,
-        emissive: '#ffffff',
-        emissiveIntensity: 1.35,
-      })
-    );
-    const clouds = new THREE.Mesh(
-      new THREE.SphereGeometry(1.012, 128, 96),
-      new THREE.MeshStandardMaterial({
-        map: maps.clouds,
-        transparent: true,
-        opacity: 0.72,
-        depthWrite: false,
-        roughness: 1,
-        metalness: 0,
-      })
-    );
-    clouds.name = 'planet-clouds';
-    // Soft layered atmosphere (inner rim + outer limb) for a Disney/Pixar night globe.
-    const atmosphere = new THREE.Mesh(
-      new THREE.SphereGeometry(1.028, 96, 64),
-      new THREE.MeshBasicMaterial({
-        color: '#9ae7ff',
-        transparent: true,
-        opacity: 0.18,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      })
-    );
-    const limb = new THREE.Mesh(
-      new THREE.SphereGeometry(1.065, 80, 56),
-      new THREE.MeshBasicMaterial({
-        color: '#5ecbff',
-        transparent: true,
-        opacity: 0.11,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      })
-    );
-    const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(1.11, 64, 48),
-      new THREE.MeshBasicMaterial({
-        color: '#3ad6ff',
-        transparent: true,
-        opacity: 0.045,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      })
-    );
-    for (const obj of [surface, clouds, atmosphere, limb, halo]) {
-      obj.raycast = () => undefined;
-    }
-    // The group pivots on the planet's centre so the inhabited cap can be turned towards the camera.
-    body.add(surface, clouds, atmosphere, limb, halo);
-    return body;
-  }
-
   private rebuildPlanetLights(): void {
     const chunks = this.planetChunks;
     if (!this.planetLights || this.planetLights.instanceMatrix.count < chunks.length) {
@@ -2214,10 +1935,7 @@ export class IsometricCityEngine {
       const towardCamera = this.camera.position.clone().sub(this.controls.target).normalize();
       this.planetGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), towardCamera);
       this.planetGroup.updateMatrixWorld(true);
-      const clouds = this.planetBody.getObjectByName('planet-clouds');
-      if (clouds) {
-        clouds.rotation.y = seconds * 0.015;
-      }
+      this.stylizedPlanet.tick(seconds);
     }
 
     const detail = zoomRatio >= DETAIL_ZOOM_RATIO || this.cinematicFocus !== null;
