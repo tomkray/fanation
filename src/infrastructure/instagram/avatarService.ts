@@ -19,8 +19,8 @@ const MAX_IMAGE_BYTES = 1_500_000;
 const MAX_REDIRECTS = 3;
 const REQUEST_TIMEOUT_MS = 15_000;
 const REFRESH_AFTER_MS = 24 * 3_600_000;
-/** Accounts we cannot resolve are retried weekly. */
-const UNAVAILABLE_RETRY_MS = 7 * 24 * 3_600_000;
+/** Transient public-page / CDN misses — retry soon so every mint keeps trying. */
+const UNAVAILABLE_RETRY_MS = 10 * 60_000;
 const WARM_DELAY_MS = 1_500;
 const MAX_LOOKUPS_PER_HOUR = 400;
 const MAX_QUEUE = 2_000;
@@ -32,6 +32,8 @@ interface AvatarMeta {
   readonly contentType?: string;
   readonly name?: string;
   readonly followersCount?: number;
+  /** Instagram's own verified badge. Absent until a profile check has seen the page. */
+  readonly instagramVerified?: boolean;
 }
 
 export interface AvatarServiceOptions {
@@ -57,6 +59,16 @@ export function isAllowedImageUrl(raw: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Instagram og tags ship `&amp;` in query strings — fetch needs real `&`. */
+export function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
 }
 
 export class AvatarService {
@@ -113,7 +125,7 @@ export class AvatarService {
    * Inject bytes into the same cache refresh would write (operator / agent
    * when lookup cannot reach the CDN). Not a second product path.
    */
-  seed(handle: string, bytes: Buffer, contentType: string, name?: string): void {
+  seed(handle: string, bytes: Buffer, contentType: string, name?: string, instagramVerified?: boolean): void {
     if (!HANDLE_PATTERN.test(handle)) {
       throw new Error(`Invalid handle: ${handle}`);
     }
@@ -127,12 +139,15 @@ export class AvatarService {
     const imagePath = path.join(this.options.directory, `${handle}.img`);
     writeFileSync(`${imagePath}.tmp`, bytes);
     renameSync(`${imagePath}.tmp`, imagePath);
+    const previous = this.readMeta(handle);
     this.writeMeta({
       handle,
       fetchedAtMs: this.now(),
       available: true,
       contentType: type,
-      name: name?.slice(0, 60),
+      name: name?.slice(0, 60) ?? previous?.name,
+      followersCount: previous?.followersCount,
+      instagramVerified: instagramVerified ?? previous?.instagramVerified,
     });
     logger.info('avatar_seeded', { handle, bytes: bytes.length, contentType: type });
   }
@@ -152,6 +167,38 @@ export class AvatarService {
   verifiedName(handle: string): string | null {
     const meta = HANDLE_PATTERN.test(handle) ? this.readMeta(handle) : null;
     return meta?.available && meta.name ? meta.name : null;
+  }
+
+  /** Remember Instagram's verified badge without touching the portrait bytes. */
+  setInstagramVerified(handle: string, instagramVerified: boolean): void {
+    if (!HANDLE_PATTERN.test(handle)) {
+      return;
+    }
+    const meta = this.readMeta(handle);
+    if (!meta) {
+      this.writeMeta({ handle, fetchedAtMs: this.now(), available: false, instagramVerified });
+      return;
+    }
+    this.writeMeta({ ...meta, instagramVerified });
+  }
+
+  /** Handles whose Instagram profile shows the verified badge. */
+  instagramVerifiedHandles(): string[] {
+    const found: string[] = [];
+    try {
+      for (const name of readdirSync(this.options.directory)) {
+        if (!name.endsWith('.json')) {
+          continue;
+        }
+        const handle = name.slice(0, -'.json'.length);
+        if (HANDLE_PATTERN.test(handle) && this.readMeta(handle)?.instagramVerified === true) {
+          found.push(handle);
+        }
+      }
+    } catch {
+      // Empty cache is a valid city — the badge list stays empty.
+    }
+    return found.sort();
   }
 
   /**
@@ -318,11 +365,12 @@ export class AvatarService {
     const og =
       /property=["']og:image["']\s+content=["']([^"']+)["']/i.exec(html) ??
       /content=["']([^"']+)["']\s+property=["']og:image["']/i.exec(html);
-    const pictureUrl = og?.[1] ?? null;
+    const pictureUrl = og?.[1] ? decodeHtmlEntities(og[1].trim()) : null;
     if (!pictureUrl || !isAllowedImageUrl(pictureUrl)) {
       return null;
     }
-    const title = /property=["']og:title["']\s+content=["']([^"']+)["']/i.exec(html)?.[1];
+    const titleRaw = /property=["']og:title["']\s+content=["']([^"']+)["']/i.exec(html)?.[1];
+    const title = titleRaw ? decodeHtmlEntities(titleRaw) : undefined;
     const name = title?.replace(/\s*\(@[a-z0-9._]+\)\s*.*$/i, '').trim().slice(0, 60);
     return { pictureUrl, name: name || undefined };
   }

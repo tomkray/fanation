@@ -1,5 +1,11 @@
 {
   "account": "@naoeumfa",
   "notes": "Posts the agent must sweep when the Creator says atualizar / passar geral. Add every new day-one permalink here after rebrand.",
-  "posts": []
+  "posts": [
+    {
+      "url": "https://www.instagram.com/p/DekwZzUpxZP/",
+      "kind": "day-one-reel",
+      "addedAt": "2026-10-16"
+    }
+  ]
 }

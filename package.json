@@ -13,6 +13,7 @@
     "instagram:check": "tsx scripts/instagram-check.ts",
     "muse:ingest": "tsx scripts/muse-ingest.ts",
     "avatar:seed": "tsx scripts/avatar-seed.ts",
+    "avatar:sync": "agent/.venv/bin/python tools/avatar_sync_browser.py",
     "ambient:city": "python3 tools/generate_city_ambient.py",
     "growth:preview": "tsx scripts/growth-preview.ts",
     "dev:api": "tsx watch src/infrastructure/http/main.ts",

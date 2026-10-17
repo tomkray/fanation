@@ -5,12 +5,12 @@
  * and a climb ticker. People: top reputation (XP) and top $NEFA balances.
  */
 
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { FandomCategory } from '../../core/types.js';
 import type { RankChangeDto, StandingDto, UserRankDto } from '../../shared/apiContract.js';
 import { architectureBand, visualClassFor } from '../../core/architecture.js';
 import { CLASS_LABELS, formatCompact, formatInteger, formatMicro, formatPct, formatWindow, RARITY_LABELS, timeAgo } from '../format.js';
-import { Avatar } from './Identity.js';
+import { Avatar, InstagramBadge, InstagramVerified } from './Identity.js';
 
 type Filter = 'ALL' | FandomCategory;
 type View = 'idols' | 'xp' | 'tokens';
@@ -87,6 +87,7 @@ export interface LeaderboardProps {
 }
 
 export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges, topByXp, topByTokens, momentumWindowSeconds, onFocusHandle }) => {
+  const verified = useContext(InstagramVerified);
   const [view, setView] = useState<View>('idols');
   const [filter, setFilter] = useState<Filter>('ALL');
   const standingsByHandle = useMemo(() => new Map(standings.map((s) => [s.fandomHandle, s])), [standings]);
@@ -213,7 +214,10 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges
                     <RankDelta movement={idol.movement} />
                     <Avatar handle={idol.fandomHandle} name={idol.displayName} colorHex={idol.neonColorHex} />
                     <span className="league__name">
-                      <strong>{idol.displayName}</strong>
+                      <strong>
+                        {idol.displayName}
+                        {verified.has(idol.fandomHandle) && <InstagramBadge />}
+                      </strong>
                       <span className="caption">
                         {idol.displayName !== `@${idol.fandomHandle}` && <span className="identity__handle">@{idol.fandomHandle} · </span>}
                         {RARITY_LABELS[architectureBand(visualClassFor(idol.fans, idol.footprint)).rarity]} · {CLASS_LABELS[idol.propertyClass]} · {formatCompact(idol.fans)} fãs
@@ -244,7 +248,10 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges
                   <Avatar handle={person.handle} colorHex={accent} />
                   <span className="league__name">
                     <span className="identity">
-                      <strong className="identity__name">@{person.handle}</strong>
+                      <strong className="identity__name">
+                        @{person.handle}
+                        {verified.has(person.handle) && <InstagramBadge />}
+                      </strong>
                       <span className="level-badge" style={{ borderColor: accent }}>
                         Nv {person.level}
                       </span>

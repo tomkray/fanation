@@ -4,18 +4,17 @@
  * on top.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AdDto, AdsDto, PropertyDetailDto } from '../shared/apiContract.js';
 import { api, avatarUrl } from './api/client.js';
 import { AdvertiseModal } from './components/AdvertiseModal.js';
 import { ConnectModal } from './components/ConnectModal.js';
-import { Avatar } from './components/Identity.js';
+import { Avatar, AvatarsEnabled, InstagramVerified } from './components/Identity.js';
 import { ProfileModal } from './components/ProfileModal.js';
 import { TokenomicsModal } from './components/TokenomicsModal.js';
 import { useSession } from './hooks/useSession.js';
 import { BrandLockup } from './components/BrandLockup.js';
 import { CinematicOverlay } from './components/CinematicOverlay.js';
-import { AvatarsEnabled } from './components/Identity.js';
 import { HomeSearch } from './components/HomeSearch.js';
 import { JoinCard } from './components/JoinCard.js';
 import { Leaderboard } from './components/Leaderboard.js';
@@ -64,6 +63,10 @@ export const App: React.FC = () => {
   const [tokenomicsOpen, setTokenomicsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const session = useSession(summary?.version ?? 0);
+  const instagramVerified = useMemo(
+    () => new Set((summary?.instagramVerified ?? []).map((handle) => handle.toLowerCase())),
+    [summary?.instagramVerified]
+  );
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null);
   const [ads, setAds] = useState<AdsDto | null>(null);
   const adsRef = useRef<AdsDto | null>(null);
@@ -230,10 +233,12 @@ export const App: React.FC = () => {
   if (CINEMATIC) {
     return (
       <AvatarsEnabled.Provider value={config?.avatars ?? false}>
+        <InstagramVerified.Provider value={instagramVerified}>
         <div className="app app--cinematic">
           <div ref={viewportRef} className="viewport" />
           {summary && <CinematicOverlay world={summary} capture={MANUAL_FRAMES} />}
         </div>
+        </InstagramVerified.Provider>
       </AvatarsEnabled.Provider>
     );
   }
@@ -278,6 +283,7 @@ export const App: React.FC = () => {
 
   return (
     <AvatarsEnabled.Provider value={config?.avatars ?? false}>
+      <InstagramVerified.Provider value={instagramVerified}>
       <div className="app">
         <div ref={viewportRef} className="viewport" aria-label="Mundo 3D Não É Um Fã" />
 
@@ -411,6 +417,7 @@ export const App: React.FC = () => {
           <AdvertiseModal ads={ads} tapped={advertise.tapped} cities={summary?.cities ?? []} onClose={() => setAdvertise(null)} />
         )}
       </div>
+      </InstagramVerified.Provider>
     </AvatarsEnabled.Provider>
   );
 };

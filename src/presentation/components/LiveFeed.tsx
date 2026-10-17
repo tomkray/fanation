@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import type { CommentRejectionCode } from '../../core/types.js';
 import type { ActivityEntryDto } from '../../shared/apiContract.js';
 import { formatInteger, formatMicro, timeAgo } from '../format.js';
-import { Avatar } from './Identity.js';
+import { Avatar, InstagramBadge, InstagramVerified } from './Identity.js';
 
 const REJECTION_LABELS: Readonly<Record<CommentRejectionCode, string>> = {
   DUPLICATE_COMMENT_ID: 'Já li esse',
@@ -50,6 +50,7 @@ function Outcome({ entry }: { readonly entry: ActivityEntryDto }): React.ReactEl
 }
 
 export const LiveFeed: React.FC<LiveFeedProps> = ({ entries, pollIntervalSeconds, onFocusLand, onAdvertise }) => {
+  const verified = useContext(InstagramVerified);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 5_000);
@@ -81,7 +82,10 @@ export const LiveFeed: React.FC<LiveFeedProps> = ({ entries, pollIntervalSeconds
               <Avatar handle={entry.authorUsername.toLowerCase()} />
               <span className="feed__body">
                 <span className="feed__meta">
-                  <strong>@{entry.authorUsername}</strong>
+                  <strong>
+                    @{entry.authorUsername}
+                    {verified.has(entry.authorUsername.toLowerCase()) && <InstagramBadge />}
+                  </strong>
                   <span className="caption">{timeAgo(entry.atIso, now)}</span>
                 </span>
                 <span className="feed__text">{entry.text}</span>

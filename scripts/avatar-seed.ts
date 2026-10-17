@@ -14,11 +14,20 @@ import { AvatarService } from '../src/infrastructure/instagram/avatarService.js'
 
 const HANDLE_PATTERN = /^[a-z0-9._]{1,30}$/;
 
-function parseArgs(argv: string[]): { handle: string; source: string | null; name: string | undefined } {
+function parseArgs(argv: string[]): { handle: string; source: string | null; name: string | undefined; instagramVerified: boolean | null } {
   const positional: string[] = [];
   let name: string | undefined;
+  let instagramVerified: boolean | null = null;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
+    if (arg === '--verified') {
+      instagramVerified = true;
+      continue;
+    }
+    if (arg === '--not-verified') {
+      instagramVerified = false;
+      continue;
+    }
     if (arg === '--name' || arg.startsWith('--name=')) {
       if (arg.startsWith('--name=') && arg.length > '--name='.length) {
         name = arg.slice('--name='.length);
@@ -37,6 +46,7 @@ function parseArgs(argv: string[]): { handle: string; source: string | null; nam
     handle: (positional[0] ?? '').trim().toLowerCase().replace(/^@/, ''),
     source: positional[1] ?? null,
     name,
+    instagramVerified,
   };
 }
 
@@ -57,9 +67,9 @@ async function main(): Promise<number> {
   if (existsSync('.env')) {
     process.loadEnvFile('.env');
   }
-  const { handle, source, name } = parseArgs(process.argv.slice(2));
+  const { handle, source, name, instagramVerified } = parseArgs(process.argv.slice(2));
   if (!HANDLE_PATTERN.test(handle)) {
-    console.error('Usage: npm run avatar:seed -- <handle> [file-or-url] [--name "Display Name"]');
+    console.error('Usage: npm run avatar:seed -- <handle> [file-or-url] [--name "Display Name"] [--verified|--not-verified]');
     return 1;
   }
   const portraits = new AvatarService({
@@ -97,8 +107,14 @@ async function main(): Promise<number> {
       console.error('✗ Source is not jpeg/png/webp');
       return 1;
     }
-    portraits.seed(handle, bytes, contentType, name);
+    portraits.seed(handle, bytes, contentType, name, instagramVerified ?? undefined);
     console.log(`✓ Seeded @${handle} into AvatarService cache (${bytes.length} bytes)`);
+    return 0;
+  }
+
+  if (instagramVerified !== null) {
+    portraits.setInstagramVerified(handle, instagramVerified);
+    console.log(`✓ @${handle} Instagram verified=${instagramVerified}`);
     return 0;
   }
 

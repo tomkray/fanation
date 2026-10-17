@@ -253,6 +253,11 @@ export interface WorldSummaryDto {
   readonly activity: readonly ActivityEntryDto[];
   readonly cities: readonly CitySummaryDto[];
   readonly chunks: readonly ChunkSummaryDto[];
+  /**
+   * Handles that show Instagram's verified badge. Same mark as on Instagram —
+   * only accounts Instagram itself marks verified.
+   */
+  readonly instagramVerified?: readonly string[];
   /** The planet grows with the population, so the cities always fit on it. */
   readonly planetRadius: number;
   readonly tokenomics: TokenomicsDto;

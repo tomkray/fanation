@@ -32,9 +32,22 @@ comment (Muse JSON | Graph poll | webhook)
 ```
 
 When the Creator asks to “do it manually”, you still use this tube:
-`npm run muse:ingest` only. The bridge **refreshes fan+idol avatars before
-it answers**. Only if the response lists `avatars.missing` may you inject CDN
-bytes via `avatars.seed` / `npm run avatar:seed` (escape hatch only).
+`npm run muse:ingest` only. **Avatars are mandatory after every mint / atualizar**
+— never skip. One cache (`AvatarService` → `data/avatars` → `GET /api/v1/avatars/:handle`):
+
+1. Muse bridge already **awaits** `refresh` for fan+idol+owner before answering.
+2. If `avatars.missing` (Instagram often strips `og:image` from server-side HTML
+   now): run **`npm run avatar:sync`** (Playwright opens the real profile → CDN
+   URL → same `avatar:seed` cache). Or per handle:
+   `npm run avatar:seed -- <handle>` then
+   `npm run avatar:seed -- <handle> <cdn-or-file-url>`.
+3. Prove every known handle returns **200** on local + public avatar routes.
+4. Instagram verified badge: `npm run avatar:sync` reads the real profile and
+   sets `instagramVerified` (blue check, same as Instagram). Only handles
+   Instagram marks verified get the badge on naoeumfa.com. The world payload
+   field is `instagramVerified`.
+
+Never invent a second portrait system. Never leave a mint without faces.
 
 ## Atualizar / passar geral (DYNAMIC — always)
 
@@ -60,10 +73,15 @@ comentários*, *atualiza a cidade*, or a new Instagram permalink.
 ## Day-one / live checklist
 
 1. API: `HOST=127.0.0.1 PORT=8787`, `NAOEUMFA_DEMO=0`, journal `data/ledger.jsonl`.
-2. Official handle: `@naoeumfa` (`NAOEUMFA_IG_USERNAME` / `OFFICIAL_INSTAGRAM_HANDLE`).
-3. Public: Vercel → Cloudflare tunnel → this Mac.
-4. Bridge secret in `.env` (24+). Never paste in chat.
-5. A1: one mint per `@`. Connect codes are `NEFA-XXXXXX`. Client header `X-Naoeumfa-Client`.
+2. **First public post = reset planet.** Live ledger empty (or wiped) when the
+   day-one reel goes out. Demo journal is only a film plate for `naoeumfa-reel`
+   — never mix it into the published city.
+3. Official handle: `@naoeumfa` (`NAOEUMFA_IG_USERNAME` / `OFFICIAL_INSTAGRAM_HANDLE`).
+4. Public: Vercel → Cloudflare tunnel → this Mac (when API is up).
+5. Bridge secret in `.env` (24+). Never paste in chat.
+6. A1: one mint per `@`. Connect codes are `NEFA-XXXXXX`. Client header `X-Naoeumfa-Client`.
+7. **Until Graph API:** keep minting manually via Muse
+   (`npm run muse:ingest`). Same tube. Reels use `naoeumfa-reel` (host + metaverse).
 
 ## Prove
 

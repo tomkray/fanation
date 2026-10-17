@@ -123,11 +123,12 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
 
   const sseClients = new Set<ServerResponse>();
 
-  /** Prefer the name Instagram itself reports over our catalogue's label. */
+  /** Prefer the name Instagram itself reports, and pass through who Instagram has verified. */
   function withVerifiedNames(summary: WorldSummaryDto): WorldSummaryDto {
     return {
       ...summary,
       standings: summary.standings.map((s) => ({ ...s, displayName: avatars.verifiedName(s.fandomHandle) ?? s.displayName })),
+      instagramVerified: avatars.instagramVerifiedHandles(),
     };
   }
 

@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { AvatarService, isAllowedImageUrl } from '../src/infrastructure/instagram/avatarService.js';
+import { AvatarService, decodeHtmlEntities, isAllowedImageUrl } from '../src/infrastructure/instagram/avatarService.js';
 
 const dirs: string[] = [];
 
@@ -37,6 +37,38 @@ describe('avatar cache', () => {
     expect(isAllowedImageUrl('http://scontent.cdninstagram.com/v/portrait.jpg')).toBe(false);
   });
 
+  it('decodes Instagram og:image &amp; so the CDN download is automatic', async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'naoeumfa-avatar-'));
+    dirs.push(directory);
+    let imageUrl = '';
+    const portraits = new AvatarService({
+      directory,
+      graphBaseUrl: 'https://graph.facebook.com/v23.0',
+      igUserId: null,
+      accessToken: null,
+      warmDelayMs: 0,
+      fetchImpl: async (input) => {
+        const url = String(input);
+        if (url.includes('instagram.com/tomkray')) {
+          return new Response(
+            '<meta property="og:image" content="https://scontent.cdninstagram.com/v/portrait.jpg?stp=dst-jpg_s100x100_tt6&amp;_nc_cat=1" />',
+            { status: 200, headers: { 'content-type': 'text/html' } }
+          );
+        }
+        imageUrl = url;
+        return new Response(Uint8Array.from([0xff, 0xd8, 0xff]), {
+          status: 200,
+          headers: { 'content-type': 'image/jpeg' },
+        });
+      },
+    });
+    expect(decodeHtmlEntities('a&amp;b')).toBe('a&b');
+    expect(await portraits.refresh('tomkray')).toBe(true);
+    expect(imageUrl).toContain('_nc_cat=1');
+    expect(imageUrl).not.toContain('&amp;');
+    expect(portraits.read('tomkray')?.contentType).toBe('image/jpeg');
+  });
+
   it('serves an operator-seeded portrait into the same cache', () => {
     const directory = mkdtempSync(path.join(tmpdir(), 'naoeumfa-avatar-'));
     dirs.push(directory);
@@ -53,6 +85,10 @@ describe('avatar cache', () => {
     expect(portraits.hasAnyCached()).toBe(true);
     expect(portraits.read('michaeljackson')?.contentType).toBe('image/jpeg');
     expect(portraits.verifiedName('michaeljackson')).toBe('Michael Jackson');
+    portraits.setInstagramVerified('michaeljackson', true);
+    expect(portraits.instagramVerifiedHandles()).toEqual(['michaeljackson']);
+    portraits.setInstagramVerified('tomkray', false);
+    expect(portraits.instagramVerifiedHandles()).toEqual(['michaeljackson']);
   });
 
   it('enqueues via public-page lookup when Discovery is off (same pipeline)', async () => {

@@ -310,6 +310,7 @@ export class IsometricCityEngine {
   private readonly beams = new Map<string, THREE.Mesh>();
   private readonly labels = new Map<string, Label>();
   private readonly avatars = new Map<string, HTMLImageElement | null>();
+  private readonly avatarTries = new Map<string, number>();
 
   private readonly planetGroup = new THREE.Group();
   private readonly planetBody: THREE.Group;
@@ -333,6 +334,7 @@ export class IsometricCityEngine {
 
   private readonly properties = new Map<number, PropertyDto>();
   private standings: readonly StandingDto[] = [];
+  private instagramVerified = new Set<string>();
   private readonly standingByHandle = new Map<string, StandingDto>();
   private cities: readonly CitySummaryDto[] = [];
   private knownChunkKeys = new Set<string>();
@@ -487,6 +489,7 @@ export class IsometricCityEngine {
   /** Rankings, cities and the planet overview; cheap to call on every version. */
   setWorld(summary: WorldSummaryDto): void {
     this.standings = summary.standings;
+    this.instagramVerified = new Set((summary.instagramVerified ?? []).map((handle) => handle.toLowerCase()));
     this.standingByHandle.clear();
     for (const s of summary.standings) {
       this.standingByHandle.set(s.fandomHandle, s);
@@ -1544,7 +1547,16 @@ export class IsometricCityEngine {
         this.updateLabels();
       }
     };
-    img.onerror = () => this.avatars.set(handle, null);
+    img.onerror = () => {
+      const tries = (this.avatarTries.get(handle) ?? 0) + 1;
+      this.avatarTries.set(handle, tries);
+      this.avatars.delete(handle);
+      if (tries < 6) {
+        window.setTimeout(() => this.updateLabels(), 4_000);
+        return;
+      }
+      this.avatars.set(handle, null);
+    };
     img.src = url;
     // Pending until it loads; the initials stand in meanwhile.
     this.avatars.set(handle, null);
@@ -1589,15 +1601,16 @@ export class IsometricCityEngine {
         this.labels.set(s.fandomHandle, label);
       }
       const avatar = this.avatarFor(s.fandomHandle);
-      const key = `${s.rankPosition}|${s.displayName}|${s.fans}|${s.reputationXp}|${s.neonColorHex}|${avatar ? 1 : 0}`;
+      const verified = this.instagramVerified.has(s.fandomHandle) ? 1 : 0;
+      const key = `${s.rankPosition}|${s.displayName}|${s.fans}|${s.reputationXp}|${s.neonColorHex}|${avatar ? 1 : 0}|${verified}`;
       if (key !== label.key) {
-        this.drawIdolLabel(label, s, avatar);
+        this.drawIdolLabel(label, s, avatar, verified === 1);
         label.key = key;
       }
     }
   }
 
-  private drawIdolLabel(label: Label, s: StandingDto, avatar: HTMLImageElement | null): void {
+  private drawIdolLabel(label: Label, s: StandingDto, avatar: HTMLImageElement | null, instagramVerified: boolean): void {
     const { ctx, texture } = label;
     const { width, height } = ctx.canvas;
     ctx.clearRect(0, 0, width, height);
@@ -1647,12 +1660,36 @@ export class IsometricCityEngine {
     ctx.fillText(rankText, textX, 80);
     const rankWidth = ctx.measureText(rankText).width + 14;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(s.displayName, textX + rankWidth, 80, maxText - rankWidth);
+    const badge = instagramVerified ? 36 : 0;
+    ctx.fillText(s.displayName, textX + rankWidth, 80, Math.max(40, maxText - rankWidth - badge));
+    if (instagramVerified) {
+      const used = Math.min(ctx.measureText(s.displayName).width, Math.max(40, maxText - rankWidth - badge));
+      this.paintVerifiedBadge(ctx, textX + rankWidth + used + 10, 52, 28);
+    }
     ctx.fillStyle = 'rgba(255, 255, 255, 0.74)';
     ctx.font = '600 32px ui-rounded, -apple-system, system-ui, sans-serif';
     const handleShown = s.displayName === `@${s.fandomHandle}` ? '' : `@${s.fandomHandle} · `;
     ctx.fillText(`${handleShown}${s.fans.toLocaleString('en-US')} fans`, textX, 134, maxText);
     texture.needsUpdate = true;
+  }
+
+  /** Instagram's blue verified check, drawn on the idol label. */
+  private paintVerifiedBadge(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#0095F6';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(2, size * 0.12);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x + size * 0.28, y + size * 0.52);
+    ctx.lineTo(x + size * 0.44, y + size * 0.7);
+    ctx.lineTo(x + size * 0.74, y + size * 0.32);
+    ctx.stroke();
+    ctx.restore();
   }
 
   private updateCityLabels(): void {
