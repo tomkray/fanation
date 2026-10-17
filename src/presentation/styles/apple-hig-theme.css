@@ -18,7 +18,7 @@
   --panel-width: 360px;
   --topbar-height: 56px;
   --touch-target: 44px;
-  --hud-top: calc(var(--space-md) + var(--topbar-height) + var(--space-md));
+  --hud-top: calc(var(--space-xs) + var(--topbar-height) + var(--space-xs));
 
   --color-canvas: #000000;
   --color-glass: rgba(22, 22, 26, 0.74);
@@ -165,8 +165,8 @@ ul {
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-lg);
+  gap: var(--space-sm);
+  padding: var(--space-md);
   min-height: 0;
 }
 
@@ -187,8 +187,8 @@ ul {
 }
 
 .brand-lockup__mark {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: block;
   flex: 0 0 auto;
   border-radius: 50%;
@@ -226,20 +226,20 @@ ul {
 
 .topbar {
   position: fixed;
-  top: var(--space-md);
-  left: var(--space-md);
-  right: var(--space-md);
+  top: var(--space-xs);
+  left: var(--space-xs);
+  right: var(--space-xs);
   height: var(--topbar-height);
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
-  padding: 0 var(--space-xs) 0 var(--space-md);
+  gap: var(--space-sm);
+  padding: 0 var(--space-xs) 0 var(--space-sm);
   z-index: 20;
 }
 
 .topbar__stats {
   display: flex;
-  gap: var(--space-lg);
+  gap: var(--space-md);
   margin-left: auto;
   font-size: 14px;
   color: var(--color-text-muted);
@@ -257,14 +257,70 @@ ul {
 .home-search {
   position: fixed;
   z-index: 21;
-  top: calc(var(--space-md) + var(--topbar-height) + var(--space-sm));
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(440px, calc(100vw - 2 * var(--panel-width) - 64px));
+  width: 44px;
+  height: 44px;
   display: flex;
   flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 160ms ease, width 180ms ease, height 180ms ease;
+}
+
+.home-search:hover,
+.home-search:focus-within,
+.home-search--open {
+  width: min(400px, calc(100vw - 2 * var(--panel-width) - 48px));
+  height: auto;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md);
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-sm);
+  overflow: visible;
+  opacity: 1;
+}
+
+.home-search__grip {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  color: var(--color-text-main);
+  background: transparent;
+  font-size: 18px;
+}
+
+.home-search:hover .home-search__grip,
+.home-search:focus-within .home-search__grip,
+.home-search--open .home-search__grip {
+  position: static;
+  width: auto;
+  height: 24px;
+  align-self: flex-start;
+  padding: 0 var(--space-2xs);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.home-search__label,
+.home-search__row,
+.home-search__note {
+  display: none;
+}
+
+.home-search:hover .home-search__label,
+.home-search:focus-within .home-search__label,
+.home-search--open .home-search__label,
+.home-search:hover .home-search__row,
+.home-search:focus-within .home-search__row,
+.home-search--open .home-search__row,
+.home-search:hover .home-search__note,
+.home-search:focus-within .home-search__note,
+.home-search--open .home-search__note {
+  display: flex;
 }
 
 .home-search__label {
@@ -358,9 +414,9 @@ ul {
 
 .hud--left {
   top: var(--hud-top);
-  left: var(--space-md);
-  bottom: var(--space-md);
-  gap: var(--space-md);
+  left: var(--space-xs);
+  bottom: var(--space-xs);
+  gap: var(--space-xs);
 }
 
 .hud--left > .panel--league,
@@ -375,8 +431,8 @@ ul {
 
 .hud--right {
   top: var(--hud-top);
-  right: var(--space-md);
-  bottom: var(--space-md);
+  right: var(--space-xs);
+  bottom: var(--space-xs);
 }
 
 .hud--bottom {
@@ -1571,8 +1627,10 @@ button.feed__button:hover {
     display: none;
   }
 
-  .home-search {
-    width: min(440px, calc(100% - 32px));
+  .home-search:hover,
+  .home-search:focus-within,
+  .home-search--open {
+    width: min(400px, calc(100% - 16px));
   }
 
   /* The tab bar carries the Planet toggle on phones. */
@@ -1943,16 +2001,18 @@ button.feed__button:hover {
   position: relative;
   display: grid;
   place-items: center;
-  aspect-ratio: 16 / 11;
+  width: min(100%, 280px);
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
   overflow: hidden;
   border: 2px solid;
-  border-radius: var(--radius-lg);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .deed__art img {
-  width: 100%;
-  height: 100%;
+  width: 88%;
+  height: 88%;
   object-fit: contain;
 }
 

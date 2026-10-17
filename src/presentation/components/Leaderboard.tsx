@@ -145,14 +145,14 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ standings, rankChanges
   return (
     <section className="glass panel panel--league" aria-label="Rankings">
       <header className="panel__header">
-        <span className="eyebrow">Ranking global · ao vivo</span>
-        <h2 className="title-sm">Quem tá voando</h2>
+        <span className="eyebrow">Ranking</span>
+        <h2 className="title-sm">Ao vivo</h2>
         <p className="caption">
           {view === 'idols'
-            ? `XP que os fãs renderam pra cada ídolo · movimento vs ${formatWindow(momentumWindowSeconds)} atrás`
+            ? `XP dos fãs · vs ${formatWindow(momentumWindowSeconds)}`
             : view === 'xp'
-              ? 'XP se ganha jogando — e não se vende. Zero negociata.'
-              : 'Saldo $NEFA negociável (a moeda do rolê)'}
+              ? 'XP não se vende.'
+              : 'Saldo $NEFA'}
         </p>
       </header>
 

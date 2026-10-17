@@ -1622,36 +1622,12 @@ export class IsometricCityEngine {
     ctx.fill();
     ctx.stroke();
 
-    // Profile picture (or initials) in a ring of the district colour.
-    const cx = 92;
-    const cy = height / 2;
-    const r = 58;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    if (avatar) {
-      ctx.drawImage(avatar, cx - r, cy - r, r * 2, r * 2);
-    } else {
-      ctx.fillStyle = s.neonColorHex;
-      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-      ctx.fillStyle = 'rgba(10, 13, 28, 0.9)';
-      ctx.font = '800 56px ui-rounded, -apple-system, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(s.displayName.replace(/^@/, '').slice(0, 1).toUpperCase(), cx, cy + 2);
-      ctx.textAlign = 'start';
-      ctx.textBaseline = 'alphabetic';
-    }
-    ctx.restore();
-    ctx.strokeStyle = s.neonColorHex;
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
+    const well = 116;
+    const wellX = 28;
+    const wellY = (height - well) / 2;
+    this.paintHouseWell(ctx, wellX, wellY, well, s.neonColorHex, avatar);
 
-    const textX = cx + r + 26;
+    const textX = wellX + well + 24;
     const maxText = width - textX - 34;
     const medal = s.rankPosition <= 3 ? ['#ffd60a', '#d9dde8', '#ff9f45'][s.rankPosition - 1] : s.neonColorHex;
     ctx.fillStyle = medal;
@@ -1669,8 +1645,58 @@ export class IsometricCityEngine {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.74)';
     ctx.font = '600 32px ui-rounded, -apple-system, system-ui, sans-serif';
     const handleShown = s.displayName === `@${s.fandomHandle}` ? '' : `@${s.fandomHandle} · `;
-    ctx.fillText(`${handleShown}${s.fans.toLocaleString('en-US')} fans`, textX, 134, maxText);
+    const fanWord = s.fans === 1 ? 'fã' : 'fãs';
+    ctx.fillText(`${handleShown}${s.fans.toLocaleString('pt-BR')} ${fanWord}`, textX, 134, maxText);
     texture.needsUpdate = true;
+  }
+
+  /** Square well with the district house, so every rank card shows a home. */
+  private paintHouseWell(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    avatar: HTMLImageElement | null,
+  ): void {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, size, size, 18);
+    ctx.fillStyle = 'rgba(8, 12, 24, 0.92)';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    const cx = x + size / 2;
+    const base = y + size * 0.72;
+    const w = size * 0.46;
+    ctx.beginPath();
+    ctx.moveTo(cx, y + size * 0.22);
+    ctx.lineTo(cx + w, y + size * 0.4);
+    ctx.lineTo(cx - w, y + size * 0.4);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.fillStyle = '#f4f7fb';
+    ctx.fillRect(cx - w * 0.62, y + size * 0.4, w * 1.24, size * 0.32);
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - w * 0.16, base - size * 0.2, w * 0.32, size * 0.2);
+    if (avatar) {
+      const r = 16;
+      const ax = x + size - r - 6;
+      const ay = y + size - r - 6;
+      ctx.beginPath();
+      ctx.arc(ax, ay, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#0a0d1c';
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ax, ay, r - 2, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(avatar, ax - r, ay - r, r * 2, r * 2);
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   /** Instagram's blue verified check, drawn on the idol label. */
@@ -1724,7 +1750,8 @@ export class IsometricCityEngine {
       ctx.fillText(city.name, width / 2, 72, width - 60);
       ctx.fillStyle = city.colorHex;
       ctx.font = '700 32px ui-rounded, -apple-system, system-ui, sans-serif';
-      ctx.fillText(`${city.properties.toLocaleString('en-US')} homes`, width / 2, 118, width - 60);
+      const homes = city.properties === 1 ? 'casa' : 'casas';
+      ctx.fillText(`${city.properties.toLocaleString('pt-BR')} ${homes}`, width / 2, 118, width - 60);
       ctx.textAlign = 'start';
       texture.needsUpdate = true;
       label.key = key;
