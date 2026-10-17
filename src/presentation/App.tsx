@@ -10,6 +10,7 @@ import { api, avatarUrl } from './api/client.js';
 import { AdvertiseModal } from './components/AdvertiseModal.js';
 import { ConnectModal } from './components/ConnectModal.js';
 import { LinkLoginModal } from './components/LinkLoginModal.js';
+import { dismissBoot } from './boot.js';
 import { Avatar, AvatarsEnabled, InstagramVerified } from './components/Identity.js';
 import { ProfileModal } from './components/ProfileModal.js';
 import { TokenomicsModal } from './components/TokenomicsModal.js';
@@ -114,6 +115,13 @@ export const App: React.FC = () => {
   }, [ads]);
 
   useEffect(() => {
+    // Reel capture films the city itself; an error must be readable, not hidden behind the splash.
+    if (CINEMATIC || error) {
+      dismissBoot();
+    }
+  }, [error]);
+
+  useEffect(() => {
     if (!reorganized) {
       return undefined;
     }
@@ -170,6 +178,9 @@ export const App: React.FC = () => {
     const firstWorld = !openedRef.current;
     openedRef.current = true;
     engine.setWorld(summary);
+    if (firstWorld) {
+      void engine.ready.then(dismissBoot, dismissBoot);
+    }
     if (firstWorld && OPEN_ON_PLANET && !CINEMATIC) {
       engine.setView('planet');
     }
