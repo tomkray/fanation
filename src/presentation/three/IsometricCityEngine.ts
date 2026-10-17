@@ -1602,7 +1602,7 @@ export class IsometricCityEngine {
       }
       const avatar = this.avatarFor(s.fandomHandle);
       const verified = this.instagramVerified.has(s.fandomHandle) ? 1 : 0;
-      const key = `${s.rankPosition}|${s.displayName}|${s.fans}|${s.reputationXp}|${s.neonColorHex}|${avatar ? 1 : 0}|${verified}`;
+      const key = `face|${s.rankPosition}|${s.displayName}|${s.fans}|${s.reputationXp}|${s.neonColorHex}|${avatar ? 1 : 0}|${verified}`;
       if (key !== label.key) {
         this.drawIdolLabel(label, s, avatar, verified === 1);
         label.key = key;
@@ -1622,12 +1622,13 @@ export class IsometricCityEngine {
     ctx.fill();
     ctx.stroke();
 
-    const well = 116;
-    const wellX = 28;
-    const wellY = (height - well) / 2;
-    this.paintHouseWell(ctx, wellX, wellY, well, s.neonColorHex, avatar);
+    const portrait = 124;
+    const portraitX = 24;
+    const portraitY = (height - portrait) / 2;
+    this.paintOwnerPortrait(ctx, portraitX, portraitY, portrait, s.neonColorHex, s.displayName, avatar);
+    this.paintHouseWell(ctx, portraitX + portrait - 40, portraitY + portrait - 40, 36, s.neonColorHex);
 
-    const textX = wellX + well + 24;
+    const textX = portraitX + portrait + 22;
     const maxText = width - textX - 34;
     const medal = s.rankPosition <= 3 ? ['#ffd60a', '#d9dde8', '#ff9f45'][s.rankPosition - 1] : s.neonColorHex;
     ctx.fillStyle = medal;
@@ -1650,14 +1651,50 @@ export class IsometricCityEngine {
     texture.needsUpdate = true;
   }
 
-  /** Square well with the district house, so every rank card shows a home. */
+  /** The owner's Instagram picture, large and plain, in a district-coloured ring. */
+  private paintOwnerPortrait(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    name: string,
+    avatar: HTMLImageElement | null,
+  ): void {
+    const cx = x + size / 2;
+    const cy = y + size / 2;
+    const r = size / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 5, 0, Math.PI * 2);
+    ctx.clip();
+    if (avatar) {
+      ctx.drawImage(avatar, cx - (r - 5), cy - (r - 5), (r - 5) * 2, (r - 5) * 2);
+    } else {
+      ctx.fillStyle = 'rgba(10, 13, 28, 0.9)';
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 56px ui-rounded, -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(name.replace(/^@/, '').slice(0, 1).toUpperCase(), cx, cy + 2);
+      ctx.textAlign = 'start';
+      ctx.textBaseline = 'alphabetic';
+    }
+    ctx.restore();
+  }
+
+  /** Small house mark so the card still says "home", without covering the face. */
   private paintHouseWell(
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     size: number,
     color: string,
-    avatar: HTMLImageElement | null,
   ): void {
     ctx.save();
     ctx.beginPath();
@@ -1681,21 +1718,6 @@ export class IsometricCityEngine {
     ctx.fillRect(cx - w * 0.62, y + size * 0.4, w * 1.24, size * 0.32);
     ctx.fillStyle = color;
     ctx.fillRect(cx - w * 0.16, base - size * 0.2, w * 0.32, size * 0.2);
-    if (avatar) {
-      const r = 16;
-      const ax = x + size - r - 6;
-      const ay = y + size - r - 6;
-      ctx.beginPath();
-      ctx.arc(ax, ay, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#0a0d1c';
-      ctx.fill();
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(ax, ay, r - 2, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(avatar, ax - r, ay - r, r * 2, r * 2);
-      ctx.restore();
-    }
     ctx.restore();
   }
 
