@@ -257,15 +257,35 @@ ul {
 .home-search {
   position: fixed;
   z-index: 21;
-  top: calc(var(--space-xs) + var(--topbar-height) + var(--space-xs));
+  top: calc(var(--space-xs) + var(--topbar-height) + var(--space-xl));
   left: 50%;
   transform: translateX(-50%);
-  width: min(320px, calc(100vw - 2 * var(--panel-width) - 32px));
+  width: auto;
   display: flex;
   flex-direction: column;
+  gap: 0;
+  padding: var(--space-2xs) var(--space-sm);
+  background: rgba(22, 22, 26, 0.42);
+}
+
+.home-search__row,
+.home-search__note {
+  display: none;
+}
+
+.home-search--open {
+  width: min(260px, calc(100vw - 2 * var(--panel-width) - 48px));
   gap: var(--space-2xs);
-  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-sm);
-  background: rgba(22, 22, 26, 0.55);
+  padding: var(--space-2xs) var(--space-2xs) var(--space-2xs) var(--space-sm);
+  background: rgba(22, 22, 26, 0.72);
+}
+
+.home-search--open .home-search__row {
+  display: flex;
+}
+
+.home-search--open .home-search__note {
+  display: block;
 }
 
 .home-search__label {
@@ -277,7 +297,6 @@ ul {
 }
 
 .home-search__row {
-  display: flex;
   gap: var(--space-xs);
 }
 
@@ -1573,8 +1592,11 @@ button.feed__button:hover {
   }
 
   .home-search {
-    top: calc(var(--space-xs) + var(--topbar-height) + var(--space-2xs));
-    width: min(320px, calc(100% - 16px));
+    top: calc(var(--space-xs) + var(--topbar-height) + var(--space-lg));
+  }
+
+  .home-search--open {
+    width: min(260px, calc(100% - 32px));
   }
 
   /* The tab bar carries the Planet toggle on phones. */

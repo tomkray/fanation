@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { normalizeInstagramHandle } from '../../core/antiFraud.js';
 import type { PropertyDetailDto } from '../../shared/apiContract.js';
 import { api, ApiError } from '../api/client.js';
@@ -10,6 +10,23 @@ export const HomeSearch: React.FC<{ readonly onFound: (detail: PropertyDetailDto
   const [status, setStatus] = useState<'idle' | 'searching' | 'found' | 'missing' | 'invalid'>('idle');
   const [missingHandle, setMissingHandle] = useState('');
   const [foundLine, setFoundLine] = useState('');
+  const [hot, setHot] = useState(false);
+  const node = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    const close = (event: PointerEvent): void => {
+      const target = event.target;
+      if (status !== 'idle') {
+        return;
+      }
+      if (target instanceof Node && node.current?.contains(target)) {
+        return;
+      }
+      setHot(false);
+    };
+    window.addEventListener('pointerdown', close);
+    return () => window.removeEventListener('pointerdown', close);
+  }, [status]);
 
   const submit = (event: React.FormEvent): void => {
     event.preventDefault();
@@ -39,7 +56,32 @@ export const HomeSearch: React.FC<{ readonly onFound: (detail: PropertyDetailDto
   };
 
   return (
-    <form className="home-search glass" role="search" onSubmit={submit}>
+    <form
+      ref={node}
+      className={`home-search glass${hot || status !== 'idle' ? ' home-search--open' : ''}`}
+      role="search"
+      onSubmit={submit}
+      onPointerEnter={(event) => {
+        if (event.pointerType === 'mouse') {
+          setHot(true);
+        }
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType !== 'mouse' || status !== 'idle') {
+          return;
+        }
+        const active = document.activeElement;
+        if (active instanceof Node && node.current?.contains(active)) {
+          return;
+        }
+        setHot(false);
+      }}
+      onPointerDown={(event) => {
+        if (event.pointerType !== 'mouse') {
+          setHot(true);
+        }
+      }}
+    >
       <label className="home-search__label" htmlFor="home-search">
         Acha tua casa
       </label>
