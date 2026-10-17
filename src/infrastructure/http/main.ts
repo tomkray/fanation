@@ -16,6 +16,7 @@ import { CommentPoller } from '../instagram/commentPoller.js';
 import { CommentSource } from '../instagram/commentSource.js';
 import { GraphCommentSource } from '../instagram/graphCommentSource.js';
 import { SimulatedCommentSource } from '../instagram/simulatedCommentSource.js';
+import { MediaKeyResolver } from '../instagram/postKey.js';
 import { FileEventJournal } from '../persistence/eventJournal.js';
 import { createNaoeumfaServer } from './server.js';
 
@@ -55,6 +56,9 @@ function main(): void {
   }
 
   const avatars = new AvatarService(config.avatars);
+  const mediaKeys = config.meta.igAccessToken
+    ? new MediaKeyResolver({ graphBaseUrl: config.meta.graphBaseUrl, accessToken: config.meta.igAccessToken, tokenTransport: config.meta.tokenTransport })
+    : null;
 
   let source: CommentSource | null = null;
   if (config.commentSource === 'instagram' && config.meta.igAccessToken && config.meta.igUserId) {
@@ -64,6 +68,7 @@ function main(): void {
       accessToken: config.meta.igAccessToken,
       mediaLimit: config.pollMediaLimit,
       tokenTransport: config.meta.tokenTransport,
+      mediaKeys: mediaKeys ?? undefined,
     });
   } else if (config.commentSource === 'simulated') {
     source = new SimulatedCommentSource({ seed: Date.now() % 2_147_483_647 });
@@ -120,7 +125,7 @@ function main(): void {
         })
       : null;
   logger.info(dmLogin ? 'dm_login_on' : 'dm_login_off', { publicUrl: config.publicUrl });
-  const server = createNaoeumfaServer(config, { city, avatars, ads, auth, dmLogin });
+  const server = createNaoeumfaServer(config, { city, avatars, ads, auth, dmLogin, mediaKeys });
   server.listen(config.port, config.host, () => {
     logger.info('api_listening', { url: `http://${config.host}:${config.port}`, commentSource: config.commentSource });
     poller?.start();

@@ -649,8 +649,10 @@ export function applyCheckoutLocked(state: CityState, request: CheckoutRequest):
 /** Moves the property or the tokens. Reputation and fans never move: they belong to the profile. */
 export function applyPaymentSettled(state: CityState, proof: SettlementProof): SettlementReceipt {
   assertPlayer(state, proof.buyerHandle);
-  if (state.settledTxRefs.has(proof.externalTxRef)) {
-    throw new MarketError('INVALID_TX_REF', `Payment ${proof.externalTxRef} was already applied.`);
+  // The reference is stored trimmed, so it is checked trimmed: "TX1" and "TX1 " are one payment.
+  const ref = proof.externalTxRef.trim();
+  if (state.settledTxRefs.has(ref)) {
+    throw new MarketError('INVALID_TX_REF', `Payment ${ref} was already applied.`);
   }
   const receipt = settleMarketListing(requireListing(state, proof.listingId), proof);
   const settled = receipt.listing;
@@ -672,7 +674,7 @@ export function applyPaymentSettled(state: CityState, proof: SettlementProof): S
   }
 
   state.listings.set(settled.listingId, settled);
-  state.settledTxRefs.add(proof.externalTxRef);
+  state.settledTxRefs.add(ref);
   return receipt;
 }
 

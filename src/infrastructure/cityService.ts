@@ -70,6 +70,7 @@ import {
 } from '../core/tokenomics.js';
 import { EventJournal, JournalRecord, serializeRecordBody } from './persistence/eventJournal.js';
 import { LedgerChain, LedgerHead, LedgerProof } from './persistence/ledgerChain.js';
+import { legacyMuseMediaIds } from './instagram/postKey.js';
 
 function toOfferDto(offer: PropertyOffer): OfferDto {
   return {
@@ -222,6 +223,8 @@ export class CityService {
   private seq = 0;
   private version = 0;
   private readonly chain = new LedgerChain();
+  /** Every post id comments were recorded under (see samePost). */
+  private readonly commentMediaIds = new Set<string>();
   /** Hashed bytes and the @s involved, for market, payment and wallet records (comments are public on Instagram). */
   private readonly ownBodies = new Map<number, { readonly body: string; readonly parties: readonly string[] }>();
   private summaryCache: { readonly version: number; readonly value: WorldSummaryDto } | null = null;
@@ -321,7 +324,9 @@ export class CityService {
   }
 
   private rememberBody(record: JournalRecord, body: string, parties: readonly string[]): void {
-    if (record.event.kind !== 'comment') {
+    if (record.event.kind === 'comment') {
+      this.commentMediaIds.add(record.event.event.mediaId);
+    } else {
       this.ownBodies.set(record.seq, { body, parties });
     }
   }
@@ -350,9 +355,24 @@ export class CityService {
     return () => this.commentObservers.delete(observer);
   }
 
+  /**
+   * A post the book already knows under an older Muse id keeps that id, so a
+   * comment read again through another door meets "one counted comment per
+   * fan per post" instead of scoring twice.
+   */
+  private samePost(event: InstagramCommentEvent): InstagramCommentEvent {
+    if (!event.mediaId.startsWith('ig_') || this.commentMediaIds.has(event.mediaId)) {
+      return event;
+    }
+    const legacy = legacyMuseMediaIds(event.mediaId.slice('ig_'.length)).find((id) => this.commentMediaIds.has(id));
+    return legacy ? { ...event, mediaId: legacy } : event;
+  }
+
   /** Earliest comment first, so arrival order (and therefore proximity) is fair. */
   ingestComments(events: readonly InstagramCommentEvent[], source: CommentSourceName): CommentProcessingOutcome[] {
-    const opened = events.filter((event) => this.liveFromMs === null || event.receivedAtMs >= this.liveFromMs);
+    const opened = events
+      .filter((event) => this.liveFromMs === null || event.receivedAtMs >= this.liveFromMs)
+      .map((event) => this.samePost(event));
     const fresh = opened
       .filter((e) => !this.state.processedCommentIds.has(e.commentId))
       .sort((a, b) => a.receivedAtMs - b.receivedAtMs || a.commentId.localeCompare(b.commentId));
@@ -398,7 +418,7 @@ export class CityService {
 
   /** Returns null when the payment was already applied (provider retry). */
   settlePayment(proof: SettlementProof): SettlementReceipt | null {
-    if (this.state.settledTxRefs.has(proof.externalTxRef)) {
+    if (this.state.settledTxRefs.has(proof.externalTxRef.trim())) {
       return null;
     }
     const result = this.commit({ kind: 'payment_settled', proof }, 'payment');

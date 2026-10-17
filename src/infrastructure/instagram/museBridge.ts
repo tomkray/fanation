@@ -7,6 +7,7 @@
 import { createHash } from 'node:crypto';
 import { normalizeInstagramHandle } from '../../core/antiFraud.js';
 import type { InstagramCommentEvent } from '../../core/types.js';
+import { instagramShortcode, postMediaId } from './postKey.js';
 
 const MAX_COMMENTS = 500;
 
@@ -41,12 +42,17 @@ export function museCommentId(mediaId: string, authorUsername: string, text: str
   return `muse_${digest}`;
 }
 
+/** The post's own code wins, so a Muse paste and the Graph API name the same post the same way. */
 export function mediaIdFromBatch(batch: MuseBatchInput): string {
+  const url = batch.mediaUrl?.trim();
+  const code = url ? instagramShortcode(url) : null;
+  if (code) {
+    return postMediaId(code);
+  }
   const explicit = batch.mediaId?.trim();
   if (explicit) {
     return explicit.slice(0, 64);
   }
-  const url = batch.mediaUrl?.trim();
   if (url) {
     return `muse_media_${createHash('sha256').update(url).digest('hex').slice(0, 32)}`;
   }

@@ -93,6 +93,16 @@ comentários*, *atualiza a cidade*, or a new Instagram permalink.
 bash scripts/live-status.sh
 ```
 
+## No double counting across doors
+
+Every comment is keyed by its post's Instagram code (`ig_<shortcode>`), whether
+it came from a Muse paste (`mediaUrl`), the Graph poller (`permalink`) or the
+webhook (resolved once per post). So a comment pasted by hand and read again by
+the API meets "one counted comment per fan per post" and never scores twice;
+posts the book already holds under an old Muse hash keep that id. Always paste
+the post URL in a Muse batch. `tests/adversarial.test.ts` is the cheating suite:
+run it after any reducer change.
+
 ## Official account
 
 `@naoeumfa` runs the game and never plays it: no home, XP, $NEFA, fans, idol

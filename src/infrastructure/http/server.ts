@@ -38,6 +38,7 @@ import { CityService } from '../cityService.js';
 import { AdNotFoundError, AdQueueFullError, AdService } from '../ads/adService.js';
 import { AuthLimitError, AuthService } from '../auth/authService.js';
 import { DmLoginService } from '../auth/dmLogin.js';
+import { MediaKeyResolver } from '../instagram/postKey.js';
 import { AppConfig } from '../config.js';
 import { AvatarService } from '../instagram/avatarService.js';
 import { header, HttpError, JSON_BODY_LIMIT, parseJson, readRawBody, sendError, sendJson } from './httpKit.js';
@@ -117,10 +118,12 @@ export interface NaoeumfaServices {
   readonly auth: AuthService;
   /** Null until the official account's token can read and answer Direct. */
   readonly dmLogin: DmLoginService | null;
+  /** Numeric media id → post code; null without a Graph token. */
+  readonly mediaKeys: MediaKeyResolver | null;
 }
 
 export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServices): Server {
-  const { city, avatars, ads, auth, dmLogin } = services;
+  const { city, avatars, ads, auth, dmLogin, mediaKeys } = services;
   const wallet: WalletContext = { config, city, auth };
   /** Constant-time check of `Authorization: Bearer <NAOEUMFA_ADMIN_TOKEN>`; hashing equalises lengths. */
   function requireAdmin(req: IncomingMessage): void {
@@ -403,7 +406,11 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
                 logger.error('dm_login_failed', { message: err instanceof Error ? err.message : String(err) });
               });
             }
-            const events = parseMetaCommentWebhook(body);
+            const parsedComments = parseMetaCommentWebhook(body);
+            // The webhook only names the numeric media id; key it by the post's code like the other doors.
+            const events = mediaKeys
+              ? await Promise.all(parsedComments.map(async (e) => ({ ...e, mediaId: await mediaKeys.resolve(e.mediaId) })))
+              : parsedComments;
             const outcomes = city.ingestComments(events, 'instagram_webhook');
             const portraits: string[] = [];
             for (const outcome of outcomes) {

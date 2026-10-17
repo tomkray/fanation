@@ -2,12 +2,14 @@
  * Reads comments on the official account's recent posts through the
  * Instagram Graph API. Only posts whose `comments_count` changed since the
  * previous tick are re-read; overlap is harmless because the ledger dedupes
- * by comment id.
+ * by comment id. Comments are keyed by the post's code (`ig_<shortcode>`), the
+ * same key a Muse paste of that post uses.
  */
 
 import { InstagramCommentEvent } from '../../core/types.js';
 import { logger } from '../../utils/logger.js';
 import { CommentSource } from './commentSource.js';
+import { instagramShortcode, MediaKeyResolver, postMediaId } from './postKey.js';
 
 const COMMENT_FIELDS = 'id,text,timestamp,username';
 const COMMENTS_PAGE_SIZE = 50;
@@ -21,6 +23,8 @@ export interface GraphCommentSourceOptions {
   readonly mediaLimit: number;
   /** `query` is Meta's documented form; `header` keeps the token out of URLs. */
   readonly tokenTransport?: 'query' | 'header';
+  /** Shares permalinks it sees with the webhook door, so both name a post alike. */
+  readonly mediaKeys?: MediaKeyResolver;
   readonly fetchImpl?: typeof fetch;
 }
 
@@ -47,6 +51,8 @@ interface GraphPage {
 
 interface ListedMedia {
   readonly id: string;
+  /** `ig_<shortcode>` when the permalink is known, so Muse and the API name this post alike. */
+  readonly postKey: string;
   readonly timestampMs: number;
   readonly commentsCount: number | null;
 }
@@ -80,7 +86,7 @@ export class GraphCommentSource implements CommentSource {
       if (!this.shouldRead(media, listed.countsAvailable, media.id === newestId)) {
         continue;
       }
-      events.push(...(await this.fetchMediaComments(media.id)));
+      events.push(...(await this.fetchMediaComments(media.id, media.postKey)));
       if (media.commentsCount !== null) {
         this.lastCommentsCountByMedia.set(media.id, media.commentsCount);
       } else {
@@ -112,7 +118,7 @@ export class GraphCommentSource implements CommentSource {
 
   private mediaListUrl(withCount: boolean): string {
     const mediaUrl = new URL(`${this.options.graphBaseUrl}/${encodeURIComponent(this.options.igUserId)}/media`);
-    mediaUrl.searchParams.set('fields', withCount ? 'id,timestamp,comments_count' : 'id,timestamp');
+    mediaUrl.searchParams.set('fields', withCount ? 'id,timestamp,permalink,comments_count' : 'id,timestamp,permalink');
     mediaUrl.searchParams.set('limit', String(this.options.mediaLimit));
     return mediaUrl.toString();
   }
@@ -128,7 +134,12 @@ export class GraphCommentSource implements CommentSource {
       const timestamp = readString(raw, 'timestamp');
       const timestampMs = timestamp ? Date.parse(timestamp) : Number.NaN;
       const commentsCount = withCount && typeof raw.comments_count === 'number' ? raw.comments_count : null;
-      media.push({ id, timestampMs: Number.isFinite(timestampMs) ? timestampMs : 0, commentsCount });
+      const permalink = readString(raw, 'permalink');
+      const code = permalink ? instagramShortcode(permalink) : null;
+      if (permalink) {
+        this.options.mediaKeys?.remember(id, permalink);
+      }
+      media.push({ id, postKey: code ? postMediaId(code) : id, timestampMs: Number.isFinite(timestampMs) ? timestampMs : 0, commentsCount });
     }
     return media;
   }
@@ -144,7 +155,7 @@ export class GraphCommentSource implements CommentSource {
     return !this.seenWithoutCount.has(media.id);
   }
 
-  private async fetchMediaComments(mediaId: string): Promise<InstagramCommentEvent[]> {
+  private async fetchMediaComments(mediaId: string, postKey: string): Promise<InstagramCommentEvent[]> {
     const firstUrl = new URL(`${this.options.graphBaseUrl}/${encodeURIComponent(mediaId)}/comments`);
     firstUrl.searchParams.set('fields', COMMENT_FIELDS);
     firstUrl.searchParams.set('limit', String(COMMENTS_PAGE_SIZE));
@@ -154,7 +165,7 @@ export class GraphCommentSource implements CommentSource {
     for (let page = 0; nextUrl !== null && page < MAX_COMMENT_PAGES_PER_POST; page += 1) {
       const result: GraphPage = await this.getPage(nextUrl);
       for (const raw of result.data) {
-        const event = this.toEvent(raw, mediaId);
+        const event = this.toEvent(raw, postKey);
         if (event) {
           events.push(event);
         }
