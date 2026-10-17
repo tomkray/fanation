@@ -1,8 +1,9 @@
 /**
  * The planet (Axiom A3). Two grand avenues cross at Genesis — a sacred empty
- * disc — and the single city expands outward forever on one golden spiral.
- * Fandom category (artist, club, …) colours and filters the ranking; it never
- * chooses a territory. Fans always live next to their idol.
+ * disc, the civic spine — and the single city expands outward forever on one
+ * golden spiral (monumental centre, then rings of life). Fandom category
+ * colours and filters the ranking; it never chooses a territory. Fans always
+ * live next to their idol. Visual rings and garden belts live in urbanFabric.
  */
 
 import { FandomCategory } from './types.js';

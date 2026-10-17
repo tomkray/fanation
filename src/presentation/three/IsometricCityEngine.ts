@@ -23,7 +23,8 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { architectureOf, ArchitectureStyleId, isTowerVisual, STYLE_FALLBACK_FILE, styleScale } from '../../core/architecture.js';
 import { BLOCK_PITCH_METERS, CHUNK_BLOCKS, LOT_SIZE_METERS } from '../../core/cityLayout.js';
-import { CivicSite, plazaBlockOf, venueKindForCity } from '../../core/civic.js';
+import { CivicKind, CivicPulse, CivicSite, civicVenueSites, plazaBlockOf } from '../../core/civic.js';
+import { ringLook } from '../../core/urbanFabric.js';
 import { isTowerClass, PropertyClass, towerHeightMeters } from '../../core/property.js';
 import type { AdDto, ChunkSummaryDto, CitySummaryDto, PropertyDto, StandingDto, WorldSummaryDto } from '../../shared/apiContract.js';
 import { InstancedPart } from './instancedPart.js';
@@ -70,8 +71,13 @@ const TOWER_FILES: readonly string[] = [
   'tower_twist.glb',
   'tower_crown.glb',
 ];
-/** Legacy civic venue meshes (kept on disk); Genesis uses the plaza kit only. */
-const VENUE_FILES = { GENESIS: 'venue_community.glb' } as const;
+/** Cultural venues on the Genesis spiral (category neon, grow with population). */
+const VENUE_FILES: Readonly<Record<CivicKind, string>> = {
+  ARENA: 'venue_music.glb',
+  STADIUM: 'venue_sports.glb',
+  STUDIO: 'venue_creators.glb',
+  HALL: 'venue_community.glb',
+};
 /** Title-deed portrait size (CSS pixels; rendered at 2×). */
 const PORTRAIT_W = 320;
 const PORTRAIT_H = 220;
@@ -125,7 +131,6 @@ const OPENING_ZOOM_RATIO = 2.6;
 const WALL_PASTELS = ['#c9b8ff', '#ffc4a3', '#a9c2ff', '#bde5cf', '#f7b5d1', '#e3d7c1', '#9fd9e8'].map((c) => new THREE.Color(c));
 const ROOF_BASE = new THREE.Color('#23284a');
 const GRASS_HOME = new THREE.Color('#46b062');
-const GRASS_PARK = new THREE.Color('#33985a');
 const GRASS_VACANT = new THREE.Color('#244a3a');
 const PLATFORM_BUILT = new THREE.Color('#323a56');
 const PLATFORM_VACANT = new THREE.Color('#222840');
@@ -143,6 +148,35 @@ function hash01(a: number, b = 0, c = 0): number {
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
   h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
   return ((h ^ (h >>> 15)) >>> 0) / 4_294_967_296;
+}
+
+/** Smooth value noise for planet continents / clouds (deterministic, seamless on X). */
+function valueNoise2(x: number, y: number, seed: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const fx = x - x0;
+  const fy = y - y0;
+  const sx = fx * fx * (3 - 2 * fx);
+  const sy = fy * fy * (3 - 2 * fy);
+  const n00 = hash01(x0, y0, seed);
+  const n10 = hash01(x0 + 1, y0, seed);
+  const n01 = hash01(x0, y0 + 1, seed);
+  const n11 = hash01(x0 + 1, y0 + 1, seed);
+  return n00 * (1 - sx) * (1 - sy) + n10 * sx * (1 - sy) + n01 * (1 - sx) * sy + n11 * sx * sy;
+}
+
+function fbm2(x: number, y: number, seed: number, octaves = 5): number {
+  let amp = 0.5;
+  let freq = 1;
+  let sum = 0;
+  let norm = 0;
+  for (let i = 0; i < octaves; i += 1) {
+    sum += amp * valueNoise2(x * freq, y * freq, seed + i * 17);
+    norm += amp;
+    amp *= 0.5;
+    freq *= 2;
+  }
+  return sum / norm;
 }
 
 /** Owner's level is the finish: brighter neon as they level up, gold trim from level 10. */
@@ -181,11 +215,12 @@ interface BlockInfo {
   readonly bx: number;
   readonly bz: number;
   /** `vacant`: unclaimed city block next to the action, waiting for fans. */
-  kind: 'homes' | 'landmark' | 'plaza' | 'vacant';
+  kind: 'homes' | 'landmark' | 'plaza' | 'vacant' | 'venue';
   readonly lots: Map<string, PropertyDto>;
   readonly districtCounts: Map<string, number>;
   landmark: PropertyDto | null;
   plazaColor: THREE.Color | null;
+  venue: CivicSite | null;
 }
 
 interface Label {
@@ -291,7 +326,7 @@ export class IsometricCityEngine {
   private towerKits: ModelKit[] = [];
   /** Built-in house and tower kits, keyed by filename so a style can find its mesh. */
   private readonly kitsByFile = new Map<string, ModelKit>();
-  private readonly venueKits = new Map<string, ModelKit>();
+  private readonly venueKits = new Map<CivicKind, ModelKit>();
   private portraitRenderer: THREE.WebGLRenderer | null = null;
   private readonly portraitCache = new Map<string, string>();
   /** Generated variants by slot: a property class (COTTAGE…MEGATOWER) or a city id for landmarks. */
@@ -916,11 +951,11 @@ export class IsometricCityEngine {
     const towerGroup = (objectName: string): string =>
       objectName.startsWith('Podium') ? 'base' : objectName === 'Shaft' || objectName.startsWith('Fin') || objectName.startsWith('Seam') ? 'body' : 'top';
 
-    const venueCities = Object.keys(VENUE_FILES) as (keyof typeof VENUE_FILES)[];
+    const venueKinds = Object.keys(VENUE_FILES) as CivicKind[];
     const [houses, towers, venues, plaza, tree, car, lamp, bench] = await Promise.all([
       Promise.all(HOUSE_CLASSES.map((cls) => Promise.all(HOUSE_FILES[cls].map((file) => load(`${cls}:${file}`, file))))),
       Promise.all(TOWER_FILES.map((file) => load(file, file, towerGroup))),
-      Promise.all(venueCities.map((city) => load(`venue:${city}`, VENUE_FILES[city]))),
+      Promise.all(venueKinds.map((kind) => load(`venue:${kind}`, VENUE_FILES[kind]))),
       load('plaza', 'plaza.glb'),
       load('tree', 'tree.glb'),
       load('car', 'car.glb'),
@@ -946,10 +981,10 @@ export class IsometricCityEngine {
         this.kitsByFile.set(file, kit);
       }
     });
-    venueCities.forEach((city, i) => {
+    venueKinds.forEach((kind, i) => {
       const kit = venues[i];
       if (kit) {
-        this.venueKits.set(city, kit);
+        this.venueKits.set(kind, kit);
       }
     });
     this.plazaKit = plaza;
@@ -1013,7 +1048,7 @@ export class IsometricCityEngine {
       const key = `${bx}:${bz}`;
       let block = blocks.get(key);
       if (!block) {
-        block = { bx, bz, kind: 'homes', lots: new Map(), districtCounts: new Map(), landmark: null, plazaColor: null };
+        block = { bx, bz, kind: 'homes', lots: new Map(), districtCounts: new Map(), landmark: null, plazaColor: null, venue: null };
         blocks.set(key, block);
       }
       return block;
@@ -1023,8 +1058,21 @@ export class IsometricCityEngine {
       block.kind = 'plaza';
       block.plazaColor = new THREE.Color(city.colorHex);
     }
+    for (const site of civicVenueSites(this.civicPulse())) {
+      if (site.growth <= 0) {
+        continue;
+      }
+      const block = blockAt(site.bx, site.bz);
+      // Reserved in the layout — never a home; draw as a growing cultural venue.
+      block.kind = 'venue';
+      block.venue = site;
+      block.plazaColor = new THREE.Color(site.colorHex);
+    }
     for (const property of this.properties.values()) {
       const block = blockAt(Math.round(property.x / PITCH), Math.round(property.z / PITCH));
+      if (block.kind === 'venue') {
+        continue;
+      }
       if (property.footprint === 'BLOCK') {
         block.kind = 'landmark';
         block.landmark = property;
@@ -1043,12 +1091,44 @@ export class IsometricCityEngine {
           const bz = block.bz + dz;
           const key = `${bx}:${bz}`;
           if (!blocks.has(key) && bx !== 0 && bz !== 0) {
-            blocks.set(key, { bx, bz, kind: 'vacant', lots: new Map(), districtCounts: new Map(), landmark: null, plazaColor: null });
+            blocks.set(key, { bx, bz, kind: 'vacant', lots: new Map(), districtCounts: new Map(), landmark: null, plazaColor: null, venue: null });
           }
         }
       }
     }
     return blocks;
+  }
+
+  /** Category fan totals that drive arena / stadium / studio / hall scale. */
+  private civicPulse(): CivicPulse {
+    let artistFans = 0;
+    let sportsFans = 0;
+    let creatorFans = 0;
+    let communityFans = 0;
+    for (const standing of this.standings) {
+      switch (standing.category) {
+        case 'ARTIST':
+          artistFans += standing.fans;
+          break;
+        case 'CLUB':
+        case 'ATHLETE':
+          sportsFans += standing.fans;
+          break;
+        case 'INFLUENCER':
+          creatorFans += standing.fans;
+          break;
+        default:
+          communityFans += standing.fans;
+          break;
+      }
+    }
+    return {
+      properties: this.properties.size,
+      artistFans,
+      sportsFans,
+      creatorFans,
+      communityFans,
+    };
   }
 
   private rebuildCity(detail: boolean): void {
@@ -1122,6 +1202,10 @@ export class IsometricCityEngine {
         streets.add(`h:${block.bx}:${block.bz}`).add(`h:${block.bx}:${block.bz - 1}`);
       }
 
+      if (block.kind === 'venue' && block.venue) {
+        this.addCivicVenue(block.venue, compose);
+        continue;
+      }
       if (block.kind === 'plaza') {
         this.addCivicPlaza(block.bx, block.bz, cx, cz, block.plazaColor, compose);
         continue;
@@ -1144,9 +1228,11 @@ export class IsometricCityEngine {
               this.addHouse(property, lx, lz, i, j);
             }
           } else {
-            this.lots.add(compose(lx, PLATFORM_H + 0.15, lz), vacant ? GRASS_VACANT : GRASS_PARK, null);
+            const look = ringLook(block.bx, block.bz);
+            const grass = new THREE.Color(look.grassHex);
+            this.lots.add(compose(lx, PLATFORM_H + 0.15, lz), vacant ? grass.clone().lerp(GRASS_VACANT, 0.35) : grass, null);
             if (detail) {
-              this.addPark(block.bx * 7 + i, block.bz * 7 + j, lx, lz, compose, vacant);
+              this.addPark(block.bx * 7 + i, block.bz * 7 + j, lx, lz, compose, block.bx, block.bz, vacant);
             }
           }
         }
@@ -1343,8 +1429,22 @@ export class IsometricCityEngine {
     beam.position.set(x, top + 14, z);
   }
 
-  private addPark(seedA: number, seedB: number, x: number, z: number, compose: Compose, sparse: boolean): void {
-    const trees = sparse ? (hash01(seedA, seedB, 2) < 0.45 ? 1 : 0) : 1 + Math.floor(hash01(seedA, seedB, 1) * 3);
+  /**
+   * Parks follow the urban rings: garden belts get a full canopy, the civic
+   * core stays open with a few trees, the frontier stays sparse — garden-city
+   * green returning as the spiral densifies (visual only).
+   */
+  private addPark(seedA: number, seedB: number, x: number, z: number, compose: Compose, bx: number, bz: number, vacant: boolean): void {
+    const look = ringLook(bx, bz);
+    const canopy = vacant ? Math.min(1, look.canopy + 0.15) : look.canopy;
+    const trees =
+      canopy >= 0.9
+        ? 2 + Math.floor(hash01(seedA, seedB, 1) * 3)
+        : canopy >= 0.4
+          ? 1 + Math.floor(hash01(seedA, seedB, 1) * 2)
+          : hash01(seedA, seedB, 2) < 0.4
+            ? 1
+            : 0;
     for (let t = 0; t < trees; t += 1) {
       const ox = (hash01(seedA, seedB, 10 + t) - 0.5) * 9;
       const oz = (hash01(seedA, seedB, 20 + t) - 0.5) * 9;
@@ -1354,7 +1454,7 @@ export class IsometricCityEngine {
         part.add(compose(x + ox, PLATFORM_H + 0.3, z + oz, hash01(seedA, t) * 6.28, scale, scale, scale), materialName === 'Leaves' ? leaves : undefined)
       );
     }
-    if (!sparse && hash01(seedA, seedB, 50) < 0.45) {
+    if (canopy >= 0.5 && hash01(seedA, seedB, 50) < 0.45) {
       this.benchKit?.parts.forEach(({ part }) => part.add(compose(x, PLATFORM_H + 0.3, z + 4.5, Math.PI)));
     }
   }
@@ -1417,24 +1517,21 @@ export class IsometricCityEngine {
       return plaza.bx === bx && plaza.bz === bz;
     });
     const color = tint ?? (city ? new THREE.Color(city.colorHex) : AVENUE_NEON);
-    if (!city || city.id === 'GENESIS') {
-      this.plazaKit?.parts.forEach(({ part }) => part.add(compose(cx, PLATFORM_H, cz), color));
-      return;
-    }
-    this.addCivicVenue({ kind: venueKindForCity(city.id), bx, bz, city: city.id }, compose);
+    // Genesis crossing is always the sacred plaza kit — never a stadium.
+    this.plazaKit?.parts.forEach(({ part }) => part.add(compose(cx, PLATFORM_H, cz), color));
   }
 
   private addCivicVenue(site: CivicSite, compose: Compose): void {
     const cx = site.bx * PITCH;
     const cz = site.bz * PITCH;
-    const city = site.city;
-    const kit = this.venueKits.get(city);
-    const tint = new THREE.Color(this.cities.find((c) => c.id === site.city)?.colorHex ?? '#3ad6ff');
+    const kit = this.venueKits.get(site.kind);
+    const tint = new THREE.Color(site.colorHex);
+    const scale = 0.55 + site.growth * 0.95;
     if (!kit) {
-      this.plazaKit?.parts.forEach(({ part }) => part.add(compose(cx, PLATFORM_H, cz), tint));
+      this.plazaKit?.parts.forEach(({ part }) => part.add(compose(cx, PLATFORM_H, cz, 0, scale, scale, scale), tint));
       return;
     }
-    kit.parts.forEach(({ part }) => part.add(compose(cx, PLATFORM_H, cz), tint));
+    kit.parts.forEach(({ part }) => part.add(compose(cx, PLATFORM_H, cz, 0, scale, 0.55 + site.growth * 1.35, scale), tint));
   }
 
   private addStreetMarkings(streets: ReadonlySet<string>, compose: Compose): void {
@@ -1786,112 +1883,256 @@ export class IsometricCityEngine {
 
   // ---------------------------------------------------------------- planet
 
-  /** Night world: ocean, land, ice and distant city glow. The live cities sit on top of this. */
-  private paintPlanetMaps(): { readonly color: THREE.CanvasTexture; readonly glow: THREE.CanvasTexture; readonly clouds: THREE.CanvasTexture } {
-    const width = 1024;
-    const height = 512;
-    const colorCanvas = document.createElement('canvas');
-    colorCanvas.width = width;
-    colorCanvas.height = height;
-    const colorCtx = colorCanvas.getContext('2d');
-    const glowCanvas = document.createElement('canvas');
-    glowCanvas.width = width;
-    glowCanvas.height = height;
+  /**
+   * Cinema-grade night planet: deep oceans, soft continents with relief,
+   * ice caps, city lights and veil clouds. Built as canvases so the sphere
+   * stays seamless and free of external assets.
+   */
+  private paintPlanetMaps(): {
+    readonly color: THREE.CanvasTexture;
+    readonly glow: THREE.CanvasTexture;
+    readonly clouds: THREE.CanvasTexture;
+    readonly bump: THREE.CanvasTexture;
+    readonly roughness: THREE.CanvasTexture;
+  } {
+    const width = 2048;
+    const height = 1024;
+    const make = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      return canvas;
+    };
+    const colorCanvas = make();
+    const glowCanvas = make();
+    const cloudCanvas = make();
+    const bumpCanvas = make();
+    const roughCanvas = make();
+    const colorCtx = colorCanvas.getContext('2d', { willReadFrequently: true });
     const glowCtx = glowCanvas.getContext('2d');
-    const cloudCanvas = document.createElement('canvas');
-    cloudCanvas.width = width;
-    cloudCanvas.height = height;
     const cloudCtx = cloudCanvas.getContext('2d');
-    if (!colorCtx || !glowCtx || !cloudCtx) {
+    const bumpCtx = bumpCanvas.getContext('2d');
+    const roughCtx = roughCanvas.getContext('2d');
+    if (!colorCtx || !glowCtx || !cloudCtx || !bumpCtx || !roughCtx) {
       const blank = new THREE.CanvasTexture(colorCanvas);
-      return { color: blank, glow: blank, clouds: blank };
+      return { color: blank, glow: blank, clouds: blank, bump: blank, roughness: blank };
     }
-    const ocean = colorCtx.createLinearGradient(0, 0, 0, height);
-    ocean.addColorStop(0, '#1a2748');
-    ocean.addColorStop(0.18, '#0c1c3a');
-    ocean.addColorStop(0.5, '#071428');
-    ocean.addColorStop(0.82, '#0c1c3a');
-    ocean.addColorStop(1, '#182444');
-    colorCtx.fillStyle = ocean;
-    colorCtx.fillRect(0, 0, width, height);
-    glowCtx.fillStyle = '#000000';
-    glowCtx.fillRect(0, 0, width, height);
-    for (let i = 0; i < 520; i += 1) {
-      const x = hash01(i, 2) * width;
-      const y = height * (0.12 + hash01(i, 5) * 0.76);
-      const rx = 10 + hash01(i, 8) * 70;
-      const ry = rx * (0.35 + hash01(i, 3) * 0.4);
-      colorCtx.fillStyle = `rgba(${14 + hash01(i, 1) * 18}, ${36 + hash01(i, 4) * 28}, ${48 + hash01(i, 6) * 20}, ${0.35 + hash01(i, 7) * 0.5})`;
-      colorCtx.beginPath();
-      colorCtx.ellipse(x, y, rx, ry, hash01(i, 9) * Math.PI, 0, Math.PI * 2);
-      colorCtx.fill();
+
+    const color = colorCtx.createImageData(width, height);
+    const bump = bumpCtx.createImageData(width, height);
+    const rough = roughCtx.createImageData(width, height);
+    const glow = glowCtx.createImageData(width, height);
+    const clouds = cloudCtx.createImageData(width, height);
+
+    const wrapX = (x: number) => ((x % width) + width) % width;
+    for (let y = 0; y < height; y += 1) {
+      const v = y / (height - 1);
+      const lat = v * 2 - 1;
+      const ice = Math.max(0, Math.abs(lat) - 0.72) / 0.28;
+      const iceSoft = ice * ice * (3 - 2 * ice);
+      for (let x = 0; x < width; x += 1) {
+        const u = x / width;
+        // Slightly denser longitude so continents wrap without a hard seam.
+        const nx = u * 6.2;
+        const ny = v * 3.4;
+        const landMask = fbm2(nx, ny, 41, 6);
+        const detail = fbm2(nx * 2.4 + 3.1, ny * 2.4 - 1.7, 73, 4);
+        const ridge = Math.abs(fbm2(nx * 1.6, ny * 1.6, 99, 3) * 2 - 1);
+        const elevation = landMask * 0.72 + detail * 0.2 + ridge * 0.08;
+        const isLand = elevation > 0.48;
+        const shore = 1 - Math.min(1, Math.abs(elevation - 0.48) * 9);
+
+        let r: number;
+        let g: number;
+        let b: number;
+        let heightByte: number;
+        let roughByte: number;
+        if (isLand) {
+          const highland = THREE.MathUtils.clamp((elevation - 0.55) / 0.35, 0, 1);
+          // Soft teal highlands → warm coastal plains (Pixar night-earth palette).
+          r = Math.round(18 + highland * 28 + (1 - highland) * 22);
+          g = Math.round(42 + highland * 18 + detail * 20);
+          b = Math.round(58 + highland * 10 + (1 - highland) * 16);
+          heightByte = Math.round(120 + elevation * 120 + ridge * 30);
+          roughByte = Math.round(168 + highland * 55);
+        } else {
+          const deep = THREE.MathUtils.clamp((0.48 - elevation) / 0.35, 0, 1);
+          r = Math.round(4 + (1 - deep) * 10 + shore * 8);
+          g = Math.round(18 + (1 - deep) * 28 + shore * 20);
+          b = Math.round(42 + (1 - deep) * 48 + shore * 30);
+          heightByte = Math.round(28 + (1 - deep) * 40);
+          roughByte = Math.round(38 + deep * 28);
+        }
+
+        // Polar ice with soft falloff over land and sea.
+        if (iceSoft > 0.01) {
+          const iceBlend = Math.min(1, iceSoft * (isLand ? 1.15 : 0.85));
+          r = Math.round(r * (1 - iceBlend) + (210 + detail * 30) * iceBlend);
+          g = Math.round(g * (1 - iceBlend) + (224 + detail * 20) * iceBlend);
+          b = Math.round(b * (1 - iceBlend) + (236 + detail * 12) * iceBlend);
+          heightByte = Math.round(heightByte * (1 - iceBlend) + 235 * iceBlend);
+          roughByte = Math.round(roughByte * (1 - iceBlend) + 55 * iceBlend);
+        }
+
+        // Subtle atmospheric haze toward the limbs of the equirect map.
+        const haze = Math.pow(Math.abs(lat), 2.4) * 0.08;
+        r = Math.min(255, Math.round(r + 40 * haze));
+        g = Math.min(255, Math.round(g + 60 * haze));
+        b = Math.min(255, Math.round(b + 90 * haze));
+
+        const i = (y * width + x) * 4;
+        color.data[i] = r;
+        color.data[i + 1] = g;
+        color.data[i + 2] = b;
+        color.data[i + 3] = 255;
+        bump.data[i] = heightByte;
+        bump.data[i + 1] = heightByte;
+        bump.data[i + 2] = heightByte;
+        bump.data[i + 3] = 255;
+        rough.data[i] = roughByte;
+        rough.data[i + 1] = roughByte;
+        rough.data[i + 2] = roughByte;
+        rough.data[i + 3] = 255;
+
+        // City lights: denser on land belts, warm vs cool mix, soft bloom.
+        let gr = 0;
+        let gg = 0;
+        let gb = 0;
+        if (isLand && iceSoft < 0.55) {
+          const lights = fbm2(nx * 18, ny * 18, 201, 3);
+          const belt = 1 - Math.min(1, Math.abs(lat) * 1.35);
+          if (lights > 0.62 && belt > 0.2) {
+            const strength = ((lights - 0.62) / 0.38) * belt;
+            const warm = fbm2(nx * 7, ny * 7, 211, 2) > 0.55;
+            if (warm) {
+              gr = Math.round(255 * strength);
+              gg = Math.round(170 * strength);
+              gb = Math.round(90 * strength);
+            } else {
+              gr = Math.round(110 * strength);
+              gg = Math.round(190 * strength);
+              gb = Math.round(255 * strength);
+            }
+          }
+        }
+        glow.data[i] = gr;
+        glow.data[i + 1] = gg;
+        glow.data[i + 2] = gb;
+        glow.data[i + 3] = 255;
+
+        // Soft cloud veil (alpha in RGB for MeshStandard map + opacity).
+        const cNoise = fbm2(nx * 1.8 + 9, ny * 1.8, 301, 5);
+        const cDetail = fbm2(nx * 5.5, ny * 5.5, 317, 3);
+        const cloudAmt = Math.max(0, cNoise * 0.75 + cDetail * 0.35 - 0.48);
+        const ca = Math.min(255, Math.round(cloudAmt * 255 * 1.55));
+        clouds.data[i] = 235;
+        clouds.data[i + 1] = 242;
+        clouds.data[i + 2] = 255;
+        clouds.data[i + 3] = ca;
+
+        // Cheap horizontal blur for lights: smear a neighbour so dots feel cinematic.
+        if (gr + gg + gb > 0) {
+          const left = (y * width + wrapX(x - 1)) * 4;
+          glow.data[left] = Math.max(glow.data[left], Math.round(gr * 0.45));
+          glow.data[left + 1] = Math.max(glow.data[left + 1], Math.round(gg * 0.45));
+          glow.data[left + 2] = Math.max(glow.data[left + 2], Math.round(gb * 0.45));
+        }
+      }
     }
-    colorCtx.fillStyle = 'rgba(210, 224, 236, 0.55)';
-    colorCtx.fillRect(0, 0, width, 18);
-    colorCtx.fillRect(0, height - 18, width, 18);
-    for (let i = 0; i < 1400; i += 1) {
-      const x = hash01(i, 11) * width;
-      const y = height * (0.16 + hash01(i, 12) * 0.68);
-      const warm = hash01(i, 13) > 0.72;
-      glowCtx.fillStyle = warm ? 'rgba(255, 196, 120, 0.85)' : 'rgba(120, 196, 255, 0.7)';
-      glowCtx.fillRect(x, y, hash01(i, 14) > 0.92 ? 2 : 1, 1);
-    }
-    for (let i = 0; i < 180; i += 1) {
-      const x = hash01(i, 21) * width;
-      const y = hash01(i, 22) * height;
-      cloudCtx.fillStyle = `rgba(255, 255, 255, ${0.08 + hash01(i, 23) * 0.22})`;
-      cloudCtx.beginPath();
-      cloudCtx.ellipse(x, y, 18 + hash01(i, 24) * 90, 6 + hash01(i, 25) * 16, hash01(i, 26), 0, Math.PI * 2);
-      cloudCtx.fill();
-    }
-    const color = new THREE.CanvasTexture(colorCanvas);
-    const glow = new THREE.CanvasTexture(glowCanvas);
-    const clouds = new THREE.CanvasTexture(cloudCanvas);
-    for (const texture of [color, glow, clouds]) {
+
+    colorCtx.putImageData(color, 0, 0);
+    bumpCtx.putImageData(bump, 0, 0);
+    roughCtx.putImageData(rough, 0, 0);
+    glowCtx.putImageData(glow, 0, 0);
+    cloudCtx.putImageData(clouds, 0, 0);
+
+    const colorTex = new THREE.CanvasTexture(colorCanvas);
+    const glowTex = new THREE.CanvasTexture(glowCanvas);
+    const cloudTex = new THREE.CanvasTexture(cloudCanvas);
+    const bumpTex = new THREE.CanvasTexture(bumpCanvas);
+    const roughTex = new THREE.CanvasTexture(roughCanvas);
+    for (const texture of [colorTex, glowTex, cloudTex]) {
       texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = 4;
+      texture.anisotropy = 8;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
     }
-    return { color, glow, clouds };
+    for (const texture of [bumpTex, roughTex]) {
+      texture.anisotropy = 8;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+    }
+    return { color: colorTex, glow: glowTex, clouds: cloudTex, bump: bumpTex, roughness: roughTex };
   }
 
   private createPlanetBody(): THREE.Group {
     const body = new THREE.Group();
     const maps = this.paintPlanetMaps();
     const surface = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 128, 96),
+      new THREE.SphereGeometry(1, 192, 128),
       new THREE.MeshStandardMaterial({
         map: maps.color,
+        bumpMap: maps.bump,
+        bumpScale: 0.045,
+        roughnessMap: maps.roughness,
+        roughness: 1,
+        metalness: 0.08,
         emissiveMap: maps.glow,
         emissive: '#ffffff',
-        emissiveIntensity: 1.1,
-        roughness: 0.62,
-        metalness: 0.12,
+        emissiveIntensity: 1.35,
       })
     );
     const clouds = new THREE.Mesh(
-      new THREE.SphereGeometry(1.018, 96, 64),
+      new THREE.SphereGeometry(1.012, 128, 96),
       new THREE.MeshStandardMaterial({
         map: maps.clouds,
         transparent: true,
-        opacity: 0.55,
+        opacity: 0.72,
         depthWrite: false,
         roughness: 1,
+        metalness: 0,
       })
     );
     clouds.name = 'planet-clouds';
+    // Soft layered atmosphere (inner rim + outer limb) for a Disney/Pixar night globe.
     const atmosphere = new THREE.Mesh(
-      new THREE.SphereGeometry(1.045, 80, 56),
-      new THREE.MeshBasicMaterial({ color: '#7ad7ff', transparent: true, opacity: 0.22, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })
+      new THREE.SphereGeometry(1.028, 96, 64),
+      new THREE.MeshBasicMaterial({
+        color: '#9ae7ff',
+        transparent: true,
+        opacity: 0.18,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
     );
     const limb = new THREE.Mesh(
-      new THREE.SphereGeometry(1.09, 64, 48),
-      new THREE.MeshBasicMaterial({ color: '#3ad6ff', transparent: true, opacity: 0.08, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })
+      new THREE.SphereGeometry(1.065, 80, 56),
+      new THREE.MeshBasicMaterial({
+        color: '#5ecbff',
+        transparent: true,
+        opacity: 0.11,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
     );
-    for (const obj of [surface, clouds, atmosphere, limb]) {
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(1.11, 64, 48),
+      new THREE.MeshBasicMaterial({
+        color: '#3ad6ff',
+        transparent: true,
+        opacity: 0.045,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    for (const obj of [surface, clouds, atmosphere, limb, halo]) {
       obj.raycast = () => undefined;
     }
     // The group pivots on the planet's centre so the inhabited cap can be turned towards the camera.
-    body.add(surface, clouds, atmosphere, limb);
+    body.add(surface, clouds, atmosphere, limb, halo);
     return body;
   }
 

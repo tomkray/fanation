@@ -20,6 +20,7 @@
  */
 
 import { CITY_SITES, CityId, citySite } from './cities.js';
+import { civicVenueLotCentres } from './civic.js';
 import { PropertyFootprint } from './property.js';
 import { spiralCell } from './spiral.js';
 
@@ -396,6 +397,10 @@ export function resetCityLayout(layout: CityLayout): void {
   layout.neighbourhoods.clear();
   for (const site of CITY_SITES) {
     reserveBlock(layout, site.centerQ, site.centerR);
+  }
+  // Cultural venues on the Genesis spiral — reserved so homes never claim them.
+  for (const cell of civicVenueLotCentres()) {
+    reserveBlock(layout, cell.gridQ, cell.gridR);
   }
 }
 
