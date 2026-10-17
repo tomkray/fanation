@@ -6,7 +6,8 @@
  * code, they comment it on any @naoeumfa post, and the comment arrives
  * through Meta (signed webhook or the Graph API) with Meta's own author
  * username. A code only verifies the @ it was issued for, once, within 15
- * minutes. The browser that asked for it then receives a session.
+ * minutes. Muse dumps and typed names never open a session — Meta has to
+ * name the author. The browser that asked for the code then receives a session.
  *
  * Only SHA-256 digests of secrets are kept; sessions survive restarts.
  */
@@ -16,6 +17,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import path from 'node:path';
 import { normalizeInstagramHandle } from '../../core/antiFraud.js';
 import { InstagramCommentEvent } from '../../core/types.js';
+import { CommentSourceName } from '../../shared/apiContract.js';
 import { logger } from '../../utils/logger.js';
 
 export const CHALLENGE_TTL_MS = 15 * 60_000;
@@ -74,7 +76,9 @@ export class AuthService {
 
   constructor(
     private readonly sessionsPath: string,
-    private readonly now: () => number = Date.now
+    private readonly now: () => number = Date.now,
+    /** Demo-only: the sandbox simulate route may prove a code. Live city never sets this. */
+    private readonly allowSimulated = false
   ) {
     this.loadSessions();
   }
@@ -111,8 +115,17 @@ export class AuthService {
     return { handle, code, secret, expiresAtMs: challenge.expiresAtMs };
   }
 
-  /** Called with every fresh comment from Meta: a code counts only when its own @ wrote it. */
-  observeComments(events: readonly InstagramCommentEvent[]): void {
+  /**
+   * A code counts only when its own @ wrote it, and only when Meta named that
+   * author (signed webhook or Graph poll). A Muse batch is not that proof.
+   */
+  observeComments(events: readonly InstagramCommentEvent[], source: CommentSourceName): void {
+    const fromMeta = source === 'instagram_webhook' || source === 'instagram_poll';
+    const fromSandbox = source === 'simulated' && this.allowSimulated;
+    if (!fromMeta && !fromSandbox) {
+      logger.warn('auth_untrusted_source', { source });
+      return;
+    }
     const nowMs = this.now();
     for (const event of events) {
       const author = normalizeInstagramHandle(event.authorUsername);

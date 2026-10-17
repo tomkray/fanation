@@ -30,10 +30,13 @@ describe('connect with an Instagram comment', () => {
     expect(code).toMatch(/^NEFA-[2-9A-HJ-NP-Z]{6}$/);
     expect(auth.poll(secret).state).toBe('PENDING');
 
-    auth.observeComments([commentBy('mallory', `${code} it's me!`, 'c1')]);
+    auth.observeComments([commentBy('mallory', `${code} it's me!`, 'c1')], 'instagram_webhook');
     expect(auth.poll(secret).state).toBe('PENDING');
 
-    auth.observeComments([commentBy('alice.fan', `my code ${code.toLowerCase()}`, 'c2')]);
+    auth.observeComments([commentBy('alice.fan', `my code ${code.toLowerCase()}`, 'c2')], 'muse_bridge');
+    expect(auth.poll(secret).state).toBe('PENDING');
+
+    auth.observeComments([commentBy('alice.fan', `my code ${code.toLowerCase()}`, 'c2')], 'instagram_webhook');
     const verified = auth.poll(secret);
     expect(verified).toMatchObject({ state: 'VERIFIED', handle: 'alice.fan' });
     expect(auth.sessionHandle(verified.sessionToken ?? '')).toBe('alice.fan');
@@ -47,7 +50,7 @@ describe('connect with an Instagram comment', () => {
 
     const late = auth.createChallenge('alice.fan', 'ip-1');
     now += CHALLENGE_TTL_MS + 1;
-    auth.observeComments([commentBy('alice.fan', late.code, 'c3')]);
+    auth.observeComments([commentBy('alice.fan', late.code, 'c3')], 'instagram_poll');
     expect(auth.poll(late.secret).state).toBe('EXPIRED');
   });
 

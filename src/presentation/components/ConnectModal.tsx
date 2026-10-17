@@ -91,8 +91,8 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ onConnected, onClose
         {state === 'idle' || state === 'asking' ? (
           <form className="connect" onSubmit={(e) => void ask(e)}>
             <p className="caption">
-              Sem senha. Você prova que a @ é tua comentando um código único no Instagram — o mesmo lugar onde a vida de fã
-              (ops: de dono de terreno) já acontece.
+              Sem senha nossa. O Instagram é quem diz que o comentário saiu da tua @. O código vale 15 minutos, uma vez, e só conta
+              quando a Meta entrega esse comentário. Colar o @ aqui não entra.
             </p>
             <label className="field">
               <span className="caption">Tua @ do Instagram</span>
@@ -128,7 +128,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ onConnected, onClose
                 <a className="button button--secondary" href={`https://www.instagram.com/${challenge?.officialHandle ?? 'naoeumfa'}/`} target="_blank" rel="noreferrer noopener">
                   Abrir @{challenge?.officialHandle} no Instagram
                 </a>
-                <span className="caption">Em qualquer post. Só comentário escrito por @{challenge?.handle} destrava este perfil.</span>
+                <span className="caption">Em qualquer post do @{challenge?.officialHandle}. Só a Meta, dizendo que foi @{challenge?.handle}, destrava o perfil.</span>
               </li>
               <li>
                 <span className="caption">3 · Volta aqui</span>

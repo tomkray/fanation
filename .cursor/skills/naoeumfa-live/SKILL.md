@@ -80,6 +80,9 @@ comentários*, *atualiza a cidade*, or a new Instagram permalink.
 4. Public: Vercel → Cloudflare tunnel → this Mac (when API is up).
 5. Bridge secret in `.env` (24+). Never paste in chat.
 6. A1: one mint per `@`. Connect codes are `NEFA-XXXXXX`. Client header `X-Naoeumfa-Client`.
+   A session opens only when Meta names the author (`instagram_webhook` or
+   `instagram_poll`). Muse never logs anyone in. Instagram Login OAuth covers
+   professional accounts only — do not invent a “type your @” login.
 7. **Until Graph API:** keep minting manually via Muse
    (`npm run muse:ingest`). Same tube. Reels use `naoeumfa-reel` (host + metaverse).
 

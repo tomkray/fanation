@@ -103,9 +103,9 @@ function main(): void {
   const ads = new AdService(config.adsPath, config.sandbox);
   // Demo profiles and offers never share files with the real city, like the journal.
   const book = config.commentSource === 'simulated' ? '.demo' : '';
-  const auth = new AuthService(`data/sessions${book}.json`);
+  const auth = new AuthService(`data/sessions${book}.json`, Date.now, config.sandbox);
   const offers = new OfferService(`data/offers${book}.json`);
-  city.observeComments((events) => auth.observeComments(events));
+  city.observeComments((events, source) => auth.observeComments(events, source));
   const server = createNaoeumfaServer(config, { city, avatars, ads, auth, offers });
   server.listen(config.port, config.host, () => {
     logger.info('api_listening', { url: `http://${config.host}:${config.port}`, commentSource: config.commentSource });
