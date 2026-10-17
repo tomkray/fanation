@@ -11,7 +11,6 @@ import { AdService } from '../ads/adService.js';
 import { AuthService } from '../auth/authService.js';
 import { DmLoginService } from '../auth/dmLogin.js';
 import { IdentityRegistry } from '../auth/identityRegistry.js';
-import { OfferService } from '../market/offerService.js';
 import { AvatarService } from '../instagram/avatarService.js';
 import { CommentPoller } from '../instagram/commentPoller.js';
 import { CommentSource } from '../instagram/commentSource.js';
@@ -103,11 +102,10 @@ function main(): void {
   }
 
   const ads = new AdService(config.adsPath, config.sandbox);
-  // Demo profiles and offers never share files with the real city, like the journal.
+  // Demo sessions and identities never share files with the real city, like the journal.
   const book = config.commentSource === 'simulated' ? '.demo' : '';
   const auth = new AuthService(`data/sessions${book}.json`);
   const identities = new IdentityRegistry(`data/identities${book}.json`);
-  const offers = new OfferService(`data/offers${book}.json`);
   const dmLogin =
     config.meta.igAccessToken && config.meta.igUserId
       ? new DmLoginService({
@@ -121,7 +119,7 @@ function main(): void {
         })
       : null;
   logger.info(dmLogin ? 'dm_login_on' : 'dm_login_off', { publicUrl: config.publicUrl });
-  const server = createNaoeumfaServer(config, { city, avatars, ads, auth, offers, dmLogin });
+  const server = createNaoeumfaServer(config, { city, avatars, ads, auth, dmLogin });
   server.listen(config.port, config.host, () => {
     logger.info('api_listening', { url: `http://${config.host}:${config.port}`, commentSource: config.commentSource });
     poller?.start();

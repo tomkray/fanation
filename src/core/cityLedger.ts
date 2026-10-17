@@ -80,6 +80,61 @@ export interface TokenTransfer {
   readonly atIso: string;
 }
 
+export type OfferStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN';
+
+/**
+ * A bid on someone's property. No money moves with an offer: accepting it
+ * lists the property at the offered price in the same event, and the bidder
+ * pays through the normal escrowed checkout (A5).
+ */
+export interface PropertyOffer {
+  readonly offerId: string;
+  readonly plotIndex: number;
+  readonly fromHandle: string;
+  /** The owner when it was made. Only that owner, still holding the deed, can accept it. */
+  readonly toHandle: string;
+  readonly amountBrlCents: bigint;
+  readonly status: OfferStatus;
+  readonly createdAtIso: string;
+  /** Set when an accepted offer became a listing the bidder can buy. */
+  readonly listingId: string | null;
+}
+
+export interface OfferInput {
+  readonly offerId: string;
+  readonly plotIndex: number;
+  readonly fromHandle: string;
+  readonly amountBrlCents: bigint;
+  readonly atIso: string;
+}
+
+export const MIN_OFFER_BRL_CENTS = 100n;
+export const MAX_OFFER_BRL_CENTS = 100_000_000_000n;
+export const MAX_PENDING_OFFERS_PER_BIDDER = 20;
+export const MAX_PENDING_OFFERS = 5_000;
+
+export type OfferErrorCode =
+  | 'NO_SUCH_PLOT'
+  | 'OWN_PROPERTY'
+  | 'INVALID_AMOUNT'
+  | 'TOO_MANY_OFFERS'
+  | 'DUPLICATE_OFFER'
+  | 'NO_SUCH_OFFER'
+  | 'OFFER_CLOSED'
+  | 'NOT_BIDDER'
+  | 'NOT_OWNER'
+  | 'OFFER_MISMATCH';
+
+export class OfferError extends Error {
+  constructor(
+    readonly code: OfferErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = 'OfferError';
+  }
+}
+
 export type LedgerEvent =
   | { readonly kind: 'comment'; readonly event: InstagramCommentEvent }
   | { readonly kind: 'listing_created'; readonly input: CreateListingInput }
@@ -87,7 +142,11 @@ export type LedgerEvent =
   | { readonly kind: 'checkout_locked'; readonly request: CheckoutRequest }
   | { readonly kind: 'payment_settled'; readonly proof: SettlementProof }
   | { readonly kind: 'token_transferred'; readonly transfer: TokenTransfer }
-  | { readonly kind: 'lot_ad_set'; readonly plotIndex: number; readonly ownerHandle: string; readonly creative: LotAd | null };
+  | { readonly kind: 'lot_ad_set'; readonly plotIndex: number; readonly ownerHandle: string; readonly creative: LotAd | null }
+  | { readonly kind: 'offer_made'; readonly offer: OfferInput }
+  | { readonly kind: 'offer_withdrawn'; readonly offerId: string; readonly bidderHandle: string }
+  | { readonly kind: 'offer_declined'; readonly offerId: string; readonly ownerHandle: string }
+  | { readonly kind: 'offer_accepted'; readonly offerId: string; readonly ownerHandle: string; readonly listing: CreateListingInput };
 
 export type LedgerEventResult =
   | { readonly kind: 'comment'; readonly outcome: CommentProcessingOutcome }
@@ -96,7 +155,10 @@ export type LedgerEventResult =
   | { readonly kind: 'checkout_locked'; readonly listing: MarketListing }
   | { readonly kind: 'payment_settled'; readonly receipt: SettlementReceipt }
   | { readonly kind: 'token_transferred'; readonly transfer: TokenTransfer }
-  | { readonly kind: 'lot_ad_set'; readonly plotIndex: number; readonly ad: LotAd | null };
+  | { readonly kind: 'lot_ad_set'; readonly plotIndex: number; readonly ad: LotAd | null }
+  | { readonly kind: 'offer_made'; readonly offer: PropertyOffer }
+  | { readonly kind: 'offer_closed'; readonly offer: PropertyOffer }
+  | { readonly kind: 'offer_accepted'; readonly offer: PropertyOffer; readonly listing: MarketListing };
 
 export interface CityState {
   readonly config: CityLedgerConfig;
@@ -125,6 +187,7 @@ export interface CityState {
   /** $NEFA, the tradable balance. */
   readonly tokenBalancesMicro: Map<string, bigint>;
   readonly listings: Map<string, MarketListing>;
+  readonly offers: Map<string, PropertyOffer>;
   readonly settledTxRefs: Set<string>;
   /** Layout epochs (A3): which epoch the map belongs to and how many times it was rebuilt. */
   readonly layoutEpoch: { epoch: number; rebuilds: number; propertiesAtLastRebuild: number };
@@ -167,6 +230,7 @@ export function createCityState(config: CityLedgerConfig = DEFAULT_LEDGER_CONFIG
     reputationXpByFandom: new Map(),
     tokenBalancesMicro: new Map(),
     listings: new Map(),
+    offers: new Map(),
     settledTxRefs: new Set(),
     layoutEpoch: { epoch: Number.NEGATIVE_INFINITY, rebuilds: 0, propertiesAtLastRebuild: 0 },
     countedCommentsByHandle: new Map(),
@@ -588,6 +652,101 @@ export function applyPaymentSettled(state: CityState, proof: SettlementProof): S
   return receipt;
 }
 
+function requirePendingOffer(state: CityState, offerId: string): PropertyOffer {
+  const offer = state.offers.get(offerId);
+  if (!offer) {
+    throw new OfferError('NO_SUCH_OFFER', `Offer ${offerId} not found.`);
+  }
+  if (offer.status !== 'PENDING') {
+    throw new OfferError('OFFER_CLOSED', `Offer ${offerId} is already ${offer.status.toLowerCase()}.`);
+  }
+  return offer;
+}
+
+/** A bid to the current owner. One open bid per bidder per property: a new one replaces the old. */
+export function applyOfferMade(state: CityState, input: OfferInput): PropertyOffer {
+  const land = Number.isInteger(input.plotIndex) ? state.lands[input.plotIndex] : undefined;
+  if (!land) {
+    throw new OfferError('NO_SUCH_PLOT', `Plot #${input.plotIndex} does not exist.`);
+  }
+  if (land.ownerHandle === input.fromHandle) {
+    throw new OfferError('OWN_PROPERTY', 'This is already yours.');
+  }
+  if (input.amountBrlCents < MIN_OFFER_BRL_CENTS || input.amountBrlCents > MAX_OFFER_BRL_CENTS) {
+    throw new OfferError('INVALID_AMOUNT', 'Offer must be between R$ 1.00 and R$ 1,000,000,000.00.');
+  }
+  if (state.offers.has(input.offerId)) {
+    throw new OfferError('DUPLICATE_OFFER', `Offer id ${input.offerId} already exists.`);
+  }
+  const pending = [...state.offers.values()].filter((o) => o.status === 'PENDING');
+  const replaced = pending.find((o) => o.fromHandle === input.fromHandle && o.plotIndex === input.plotIndex);
+  const bidderOpen = pending.filter((o) => o.fromHandle === input.fromHandle).length - (replaced ? 1 : 0);
+  if (pending.length - (replaced ? 1 : 0) >= MAX_PENDING_OFFERS || bidderOpen >= MAX_PENDING_OFFERS_PER_BIDDER) {
+    throw new OfferError('TOO_MANY_OFFERS', 'Too many open offers; withdraw some first.');
+  }
+  if (replaced) {
+    state.offers.set(replaced.offerId, { ...replaced, status: 'WITHDRAWN' });
+  }
+  const offer: PropertyOffer = {
+    offerId: input.offerId,
+    plotIndex: input.plotIndex,
+    fromHandle: input.fromHandle,
+    toHandle: land.ownerHandle,
+    amountBrlCents: input.amountBrlCents,
+    status: 'PENDING',
+    createdAtIso: input.atIso,
+    listingId: null,
+  };
+  state.offers.set(offer.offerId, offer);
+  return offer;
+}
+
+export function applyOfferWithdrawn(state: CityState, offerId: string, bidderHandle: string): PropertyOffer {
+  const offer = requirePendingOffer(state, offerId);
+  if (offer.fromHandle !== bidderHandle) {
+    throw new OfferError('NOT_BIDDER', 'Only the bidder can withdraw this offer.');
+  }
+  const closed: PropertyOffer = { ...offer, status: 'WITHDRAWN' };
+  state.offers.set(offerId, closed);
+  return closed;
+}
+
+export function applyOfferDeclined(state: CityState, offerId: string, ownerHandle: string): PropertyOffer {
+  const offer = requirePendingOffer(state, offerId);
+  if (offer.toHandle !== ownerHandle) {
+    throw new OfferError('NOT_OWNER', 'Only the owner can answer this offer.');
+  }
+  const closed: PropertyOffer = { ...offer, status: 'DECLINED' };
+  state.offers.set(offerId, closed);
+  return closed;
+}
+
+/**
+ * Accepting and listing happen in one event: the property is listed at
+ * exactly the offered price, by exactly the owner who received the offer, or
+ * nothing changes at all.
+ */
+export function applyOfferAccepted(state: CityState, offerId: string, ownerHandle: string, input: CreateListingInput): { offer: PropertyOffer; listing: MarketListing } {
+  const offer = requirePendingOffer(state, offerId);
+  const land = state.lands[offer.plotIndex];
+  if (offer.toHandle !== ownerHandle || !land || land.ownerHandle !== ownerHandle) {
+    throw new OfferError('NOT_OWNER', 'You no longer own this property.');
+  }
+  if (
+    input.sellerHandle !== ownerHandle ||
+    input.assetType !== 'LAND_PLOT' ||
+    input.plotIndex !== offer.plotIndex ||
+    input.priceBrlCents !== offer.amountBrlCents ||
+    input.tokenAmountMicro !== null
+  ) {
+    throw new OfferError('OFFER_MISMATCH', 'The listing must sell this property at the offered price.');
+  }
+  const listing = applyListingCreated(state, input);
+  const accepted: PropertyOffer = { ...offer, status: 'ACCEPTED', listingId: listing.listingId };
+  state.offers.set(offerId, accepted);
+  return { offer: accepted, listing };
+}
+
 export function applyLedgerEvent(state: CityState, event: LedgerEvent): LedgerEventResult {
   switch (event.kind) {
     case 'comment':
@@ -604,9 +763,17 @@ export function applyLedgerEvent(state: CityState, event: LedgerEvent): LedgerEv
       return { kind: 'token_transferred', transfer: applyTokenTransfer(state, event.transfer) };
     case 'lot_ad_set':
       return { kind: 'lot_ad_set', plotIndex: event.plotIndex, ad: applyLotAdSet(state, event.plotIndex, event.ownerHandle, event.creative) };
+    case 'offer_made':
+      return { kind: 'offer_made', offer: applyOfferMade(state, event.offer) };
+    case 'offer_withdrawn':
+      return { kind: 'offer_closed', offer: applyOfferWithdrawn(state, event.offerId, event.bidderHandle) };
+    case 'offer_declined':
+      return { kind: 'offer_closed', offer: applyOfferDeclined(state, event.offerId, event.ownerHandle) };
+    case 'offer_accepted':
+      return { kind: 'offer_accepted', ...applyOfferAccepted(state, event.offerId, event.ownerHandle, event.listing) };
     default: {
       const exhaustive: never = event;
-      throw new Error(`Unknown ledger event: ${JSON.stringify(exhaustive)}`);
+      throw new Error(`Unknown ledger event: ${JSON.stringify(exhaustive, (_k, v: unknown) => (typeof v === 'bigint' ? v.toString() : v))}`);
     }
   }
 }

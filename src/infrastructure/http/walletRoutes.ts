@@ -26,14 +26,12 @@ import { AuthLinkDto, MeDto } from '../../shared/apiContract.js';
 import { AuthService, LOGIN_TOKEN_PATTERN, SESSION_TTL_MS } from '../auth/authService.js';
 import { CityService } from '../cityService.js';
 import { AppConfig } from '../config.js';
-import { OfferService } from '../market/offerService.js';
 import { cookie, header, HttpError, parseCookies, readAmount, readJsonObject, sendJson } from './httpKit.js';
 
 export interface WalletContext {
   readonly config: AppConfig;
   readonly city: CityService;
   readonly auth: AuthService;
-  readonly offers: OfferService;
 }
 
 const SESSION_COOKIE = 'nefa_session';
@@ -75,12 +73,12 @@ export function requireSession(auth: AuthService, req: IncomingMessage): string 
 }
 
 function me(ctx: WalletContext, handle: string): MeDto {
-  return { ...ctx.city.me(handle), offersReceived: ctx.offers.received(handle), offersMade: ctx.offers.made(handle) };
+  return { ...ctx.city.me(handle), offersReceived: ctx.city.offersReceived(handle), offersMade: ctx.city.offersMade(handle) };
 }
 
 /** Returns true when the route was handled here. */
 export async function handleWalletRoute(ctx: WalletContext, req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
-  const { config, city, auth, offers } = ctx;
+  const { config, city, auth } = ctx;
   const route = `${req.method ?? 'GET'} ${url.pathname}`;
 
   switch (route) {
@@ -184,7 +182,7 @@ export async function handleWalletRoute(ctx: WalletContext, req: IncomingMessage
       throw new HttpError(404, 'NOT_FOUND', 'No such property.');
     }
     const body = await readJsonObject(req);
-    sendJson(res, 201, offers.make({ plotIndex, fromHandle: handle, toHandle: owner, amountBrlCents: readAmount(body.amountBrlCents, 'amountBrlCents') }));
+    sendJson(res, 201, city.makeOffer(handle, plotIndex, readAmount(body.amountBrlCents, 'amountBrlCents')));
     return true;
   }
 
@@ -215,27 +213,15 @@ export async function handleWalletRoute(ctx: WalletContext, req: IncomingMessage
     const handle = requireSession(auth, req);
     const [, id, action] = decision;
     if (action === 'withdraw') {
-      sendJson(res, 200, offers.withdraw(id, handle));
+      sendJson(res, 200, city.withdrawOffer(id, handle));
       return true;
     }
     if (action === 'decline') {
-      sendJson(res, 200, offers.decide(id, handle, 'DECLINED'));
+      sendJson(res, 200, city.declineOffer(id, handle));
       return true;
     }
-    const accepted = offers.decide(id, handle, 'ACCEPTED');
-    if (city.ownerOf(accepted.plotIndex) !== handle) {
-      offers.reopen(id);
-      throw new HttpError(409, 'NOT_OWNER', 'You no longer own this property.');
-    }
-    try {
-      // Accepting lists the property at the offered price; the bidder buys it through the normal checkout.
-      const listing = city.listProperty(handle, accepted.plotIndex, BigInt(accepted.amountBrlCents));
-      offers.attachListing(id, listing.listingId);
-      sendJson(res, 200, { ...accepted, listingId: listing.listingId });
-    } catch (err) {
-      offers.reopen(id);
-      throw err;
-    }
+    // One ledger event: accepted and listed at the offered price, or nothing changes.
+    sendJson(res, 200, city.acceptOffer(id, handle));
     return true;
   }
 

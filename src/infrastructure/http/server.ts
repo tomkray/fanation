@@ -30,6 +30,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { validateAdRequest } from '../../core/ads.js';
+import { OfferError, OfferErrorCode } from '../../core/cityLedger.js';
 import { MarketError, priceForMethod } from '../../core/marketplace.js';
 import { PublicConfigDto, WorldSummaryDto } from '../../shared/apiContract.js';
 import { logger } from '../../utils/logger.js';
@@ -39,7 +40,6 @@ import { AuthLimitError, AuthService } from '../auth/authService.js';
 import { DmLoginService } from '../auth/dmLogin.js';
 import { AppConfig } from '../config.js';
 import { AvatarService } from '../instagram/avatarService.js';
-import { OfferError, OfferService } from '../market/offerService.js';
 import { header, HttpError, JSON_BODY_LIMIT, parseJson, readRawBody, sendError, sendJson } from './httpKit.js';
 import { handleWalletRoute, requireAppClient, requireSession, sessionHandle, WalletContext } from './walletRoutes.js';
 import { parseMuseBatch } from '../instagram/museBridge.js';
@@ -90,6 +90,19 @@ const MARKET_ERROR_STATUS: Readonly<Record<MarketError['code'], number>> = {
   INVALID_TX_REF: 400,
 };
 
+const OFFER_ERROR_STATUS: Readonly<Record<OfferErrorCode, number>> = {
+  NO_SUCH_PLOT: 404,
+  OWN_PROPERTY: 400,
+  INVALID_AMOUNT: 400,
+  TOO_MANY_OFFERS: 429,
+  DUPLICATE_OFFER: 409,
+  NO_SUCH_OFFER: 404,
+  OFFER_CLOSED: 409,
+  NOT_BIDDER: 403,
+  NOT_OWNER: 409,
+  OFFER_MISMATCH: 400,
+};
+
 const CHUNK_KEY_PATTERN = /^-?\d{1,6}:-?\d{1,6}$/;
 const PROPERTY_ROUTE = /^\/api\/v1\/properties\/(\d{1,10})$/;
 const PROFILE_ROUTE = /^\/api\/v1\/profiles\/([a-z0-9._]{1,30})$/;
@@ -102,14 +115,13 @@ export interface NaoeumfaServices {
   readonly avatars: AvatarService;
   readonly ads: AdService;
   readonly auth: AuthService;
-  readonly offers: OfferService;
   /** Null until the official account's token can read and answer Direct. */
   readonly dmLogin: DmLoginService | null;
 }
 
 export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServices): Server {
-  const { city, avatars, ads, auth, offers, dmLogin } = services;
-  const wallet: WalletContext = { config, city, auth, offers };
+  const { city, avatars, ads, auth, dmLogin } = services;
+  const wallet: WalletContext = { config, city, auth };
   /** Constant-time check of `Authorization: Bearer <NAOEUMFA_ADMIN_TOKEN>`; hashing equalises lengths. */
   function requireAdmin(req: IncomingMessage): void {
     if (!config.adminToken) {
@@ -245,13 +257,13 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
         const property = req.method === 'GET' ? PROPERTY_ROUTE.exec(url.pathname) : null;
         if (property) {
           const plot = Number.parseInt(property[1], 10);
-          const detail = city.propertyDetail(plot, offers.pendingCount(plot));
+          const detail = city.propertyDetail(plot, city.pendingOfferCount(plot));
           return detail ? sendJson(res, 200, detail) : sendError(res, 404, 'NOT_FOUND', 'No such property.');
         }
         const profile = req.method === 'GET' ? PROFILE_ROUTE.exec(url.pathname) : null;
         if (profile) {
           const plot = city.stateView.plotIndexByMinter.get(profile[1]);
-          const detail = city.profileDetail(profile[1], plot === undefined ? 0 : offers.pendingCount(plot));
+          const detail = city.profileDetail(profile[1], plot === undefined ? 0 : city.pendingOfferCount(plot));
           return detail ? sendJson(res, 200, detail) : sendError(res, 404, 'NOT_FOUND', 'This @ has no property yet.');
         }
         const ledgerProof = req.method === 'GET' ? LEDGER_PROOF_ROUTE.exec(url.pathname) : null;
@@ -535,7 +547,7 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
         } else if (err instanceof PaymentRailUnavailableError) {
           sendError(res, 503, 'RAIL_NOT_CONFIGURED', err.message);
         } else if (err instanceof OfferError) {
-          sendError(res, err.status, 'OFFER_REJECTED', err.message);
+          sendError(res, OFFER_ERROR_STATUS[err.code], err.code, err.message);
         } else if (err instanceof AuthLimitError) {
           sendError(res, 429, 'AUTH_LIMIT', err.message);
         } else {

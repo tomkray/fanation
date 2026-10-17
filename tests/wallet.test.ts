@@ -1,17 +1,16 @@
 /**
  * Login + wallet (A10): a Direct login link signs in once, before it
- * expires; sessions survive a restart; $NEFA transfers and listing
- * cancellations are ledger events with integer amounts.
+ * expires; sessions survive a restart; $NEFA transfers, listing cancellations
+ * and offers are ledger events with integer amounts.
  */
 
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { applyCommentEvent, applyLedgerEvent, createCityState } from '../src/core/cityLedger.js';
+import { applyCommentEvent, applyLedgerEvent, createCityState, OfferError } from '../src/core/cityLedger.js';
 import { InstagramCommentEvent } from '../src/core/types.js';
 import { AuthService, LOGIN_LINK_TTL_MS, LOGIN_TOKEN_PATTERN } from '../src/infrastructure/auth/authService.js';
-import { OfferError, OfferService } from '../src/infrastructure/market/offerService.js';
 
 function commentBy(author: string, text: string, id: string): InstagramCommentEvent {
   return { commentId: id, mediaId: 'p1', text, authorUsername: author, authorId: null, receivedAtMs: 1 };
@@ -90,14 +89,60 @@ describe('wallet ledger events', () => {
   });
 });
 
-describe('offers', () => {
-  it('keeps one open offer per bidder per property and lets only the owner decide', () => {
-    const offers = new OfferService(tempFile('offers.json'));
-    offers.make({ plotIndex: 3, fromHandle: 'bidder', toHandle: 'owner', amountBrlCents: 10_000n });
-    const second = offers.make({ plotIndex: 3, fromHandle: 'bidder', toHandle: 'owner', amountBrlCents: 15_000n });
-    expect(offers.pendingCount(3)).toBe(1);
-    expect(() => offers.decide(second.id, 'bidder', 'ACCEPTED')).toThrow(OfferError);
-    expect(offers.decide(second.id, 'owner', 'DECLINED').status).toBe('DECLINED');
-    expect(() => offers.make({ plotIndex: 3, fromHandle: 'owner', toHandle: 'owner', amountBrlCents: 10_000n })).toThrow(/already yours/);
+describe('offers in the ledger', () => {
+  function city(): { state: ReturnType<typeof createCityState>; plot: number } {
+    const state = createCityState();
+    applyCommentEvent(state, commentBy('owner', '@realmadrid', 'o1'));
+    return { state, plot: state.plotIndexByMinter.get('owner') ?? -1 };
+  }
+  const offer = (plotIndex: number, fromHandle: string, amountBrlCents: bigint, offerId: string) =>
+    ({ kind: 'offer_made', offer: { offerId, plotIndex, fromHandle, amountBrlCents, atIso: '' } }) as const;
+  const listing = (plotIndex: number, sellerHandle: string, priceBrlCents: bigint) => ({
+    listingId: 'lst_off',
+    sellerHandle,
+    assetType: 'LAND_PLOT' as const,
+    plotIndex,
+    tokenAmountMicro: null,
+    priceBrlCents,
+    priceUsdtMicro: 1n,
+    priceBtcSats: 1n,
+    nowIso: '',
+  });
+
+  it('keeps one open bid per bidder per property and refuses bids on your own home', () => {
+    const { state, plot } = city();
+    applyLedgerEvent(state, offer(plot, 'bidder', 10_000n, 'off_1'));
+    applyLedgerEvent(state, offer(plot, 'bidder', 15_000n, 'off_2'));
+    expect(state.offers.get('off_1')?.status).toBe('WITHDRAWN');
+    expect(state.offers.get('off_2')).toMatchObject({ status: 'PENDING', toHandle: 'owner' });
+    expect(() => applyLedgerEvent(state, offer(plot, 'owner', 10_000n, 'off_3'))).toThrow(OfferError);
+    expect(() => applyLedgerEvent(state, offer(plot, 'bidder', 50n, 'off_4'))).toThrow(/between/);
+    expect(() => applyLedgerEvent(state, offer(9_999, 'bidder', 10_000n, 'off_5'))).toThrow(/does not exist/);
+  });
+
+  it('lets only the owner decide, and only the bidder withdraw', () => {
+    const { state, plot } = city();
+    applyLedgerEvent(state, offer(plot, 'bidder', 15_000n, 'off_1'));
+    expect(() => applyLedgerEvent(state, { kind: 'offer_declined', offerId: 'off_1', ownerHandle: 'bidder' })).toThrow(OfferError);
+    expect(() => applyLedgerEvent(state, { kind: 'offer_withdrawn', offerId: 'off_1', bidderHandle: 'owner' })).toThrow(OfferError);
+    applyLedgerEvent(state, { kind: 'offer_declined', offerId: 'off_1', ownerHandle: 'owner' });
+    expect(state.offers.get('off_1')?.status).toBe('DECLINED');
+    expect(() => applyLedgerEvent(state, { kind: 'offer_withdrawn', offerId: 'off_1', bidderHandle: 'bidder' })).toThrow(/already declined/);
+  });
+
+  it('accepts and lists at exactly the offered price in one event, or changes nothing', () => {
+    const { state, plot } = city();
+    applyLedgerEvent(state, offer(plot, 'bidder', 15_000n, 'off_1'));
+    const accept = (input: ReturnType<typeof listing>, ownerHandle = 'owner') =>
+      () => applyLedgerEvent(state, { kind: 'offer_accepted', offerId: 'off_1', ownerHandle, listing: input });
+
+    expect(accept(listing(plot, 'owner', 1n))).toThrow(/offered price/);
+    expect(accept(listing(plot, 'owner', 15_000n), 'bidder')).toThrow(OfferError);
+    expect(state.offers.get('off_1')?.status).toBe('PENDING');
+    expect(state.listings.size).toBe(0);
+
+    accept(listing(plot, 'owner', 15_000n))();
+    expect(state.offers.get('off_1')).toMatchObject({ status: 'ACCEPTED', listingId: 'lst_off' });
+    expect(state.listings.get('lst_off')).toMatchObject({ status: 'OPEN', priceBrlCents: 15_000n, sellerHandle: 'owner' });
   });
 });

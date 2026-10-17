@@ -18,7 +18,10 @@ import {
   homesOwnedBy,
   LedgerEvent,
   LedgerEventResult,
+  OfferError,
+  OfferInput,
   plotsOwnedBy,
+  PropertyOffer,
   propertyClassOf,
   topFans,
   topHolders,
@@ -40,6 +43,7 @@ import {
   CommentSourceName,
   ListingDto,
   MeDto,
+  OfferDto,
   PropertyDetailDto,
   PropertyDto,
   PropertyMarketDto,
@@ -66,6 +70,19 @@ import {
 } from '../core/tokenomics.js';
 import { EventJournal, JournalRecord, serializeRecordBody } from './persistence/eventJournal.js';
 import { LedgerChain, LedgerHead, LedgerProof } from './persistence/ledgerChain.js';
+
+function toOfferDto(offer: PropertyOffer): OfferDto {
+  return {
+    id: offer.offerId,
+    plotIndex: offer.plotIndex,
+    fromHandle: offer.fromHandle,
+    toHandle: offer.toHandle,
+    amountBrlCents: offer.amountBrlCents.toString(),
+    status: offer.status,
+    createdAtIso: offer.createdAtIso,
+    listingId: offer.listingId,
+  };
+}
 
 /** One record's inclusion proof; `record` (its exact hashed bytes) only for the people in it. */
 export interface LedgerProofView extends LedgerProof {
@@ -286,9 +303,19 @@ export class CityService {
         return [event.transfer.fromHandle, event.transfer.toHandle];
       case 'lot_ad_set':
         return [event.ownerHandle];
+      case 'offer_made': {
+        const owner = this.ownerOf(event.offer.plotIndex);
+        return owner ? [event.offer.fromHandle, owner] : [event.offer.fromHandle];
+      }
+      case 'offer_withdrawn':
+      case 'offer_declined':
+      case 'offer_accepted': {
+        const offer = this.state.offers.get(event.offerId);
+        return offer ? [offer.fromHandle, offer.toHandle] : [];
+      }
       default: {
         const exhaustive: never = event;
-        throw new Error(`Unknown ledger event ${JSON.stringify(exhaustive)}`);
+        throw new Error(`Unknown ledger event ${String((exhaustive as { kind?: unknown }).kind)}`);
       }
     }
   }
@@ -584,6 +611,84 @@ export class CityService {
     return result.listing;
   }
 
+  makeOffer(fromHandle: string, plotIndex: number, amountBrlCents: bigint): OfferDto {
+    const offer: OfferInput = { offerId: `off_${randomBytes(8).toString('hex')}`, plotIndex, fromHandle, amountBrlCents, atIso: new Date().toISOString() };
+    const result = this.commit({ kind: 'offer_made', offer }, 'wallet');
+    this.notify();
+    if (result.kind !== 'offer_made') {
+      throw new Error('Unexpected ledger result for offer_made.');
+    }
+    return toOfferDto(result.offer);
+  }
+
+  withdrawOffer(offerId: string, bidderHandle: string): OfferDto {
+    return this.closeOffer({ kind: 'offer_withdrawn', offerId, bidderHandle });
+  }
+
+  declineOffer(offerId: string, ownerHandle: string): OfferDto {
+    return this.closeOffer({ kind: 'offer_declined', offerId, ownerHandle });
+  }
+
+  /** Lists the property at the offered price in the same ledger event; the bidder then pays by checkout. */
+  acceptOffer(offerId: string, ownerHandle: string): OfferDto {
+    const offer = this.state.offers.get(offerId);
+    if (!offer) {
+      throw new OfferError('NO_SUCH_OFFER', `Offer ${offerId} not found.`);
+    }
+    const listing: CreateListingInput = {
+      listingId: `lst_${randomBytes(8).toString('hex')}`,
+      sellerHandle: ownerHandle,
+      assetType: 'LAND_PLOT',
+      plotIndex: offer.plotIndex,
+      tokenAmountMicro: null,
+      priceBrlCents: offer.amountBrlCents,
+      priceUsdtMicro: usdMicroFromBrlCents(offer.amountBrlCents),
+      priceBtcSats: satsFromBrlCents(offer.amountBrlCents),
+      nowIso: new Date().toISOString(),
+    };
+    const result = this.commit({ kind: 'offer_accepted', offerId, ownerHandle, listing }, 'wallet');
+    this.notify();
+    if (result.kind !== 'offer_accepted') {
+      throw new Error('Unexpected ledger result for offer_accepted.');
+    }
+    return toOfferDto(result.offer);
+  }
+
+  offersReceived(handle: string): OfferDto[] {
+    return this.offersWhere((o) => o.toHandle === handle);
+  }
+
+  offersMade(handle: string): OfferDto[] {
+    return this.offersWhere((o) => o.fromHandle === handle);
+  }
+
+  pendingOfferCount(plotIndex: number): number {
+    let count = 0;
+    for (const o of this.state.offers.values()) {
+      if (o.plotIndex === plotIndex && o.status === 'PENDING') {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  private offersWhere(match: (offer: PropertyOffer) => boolean): OfferDto[] {
+    return [...this.state.offers.values()]
+      .filter(match)
+      .sort((a, b) => b.createdAtIso.localeCompare(a.createdAtIso))
+      .slice(0, 50)
+      .map(toOfferDto);
+  }
+
+  private closeOffer(event: Extract<LedgerEvent, { kind: 'offer_withdrawn' | 'offer_declined' }>): OfferDto {
+    const result = this.commit(event, 'wallet');
+    this.notify();
+    if (result.kind !== 'offer_closed') {
+      throw new Error(`Unexpected ledger result for ${event.kind}.`);
+    }
+    return toOfferDto(result.offer);
+  }
+
   transferTokens(fromHandle: string, toHandle: string, amountMicro: bigint): TokenTransfer {
     const transfer: TokenTransfer = { transferId: `tx_${randomBytes(8).toString('hex')}`, fromHandle, toHandle, amountMicro, atIso: new Date().toISOString() };
     const result = this.commit({ kind: 'token_transferred', transfer }, 'wallet');
@@ -698,6 +803,10 @@ export class CityService {
         // Listings travel in the summary; the map itself does not change.
         return [];
       case 'token_transferred':
+      case 'offer_made':
+      case 'offer_closed':
+      case 'offer_accepted':
+        // Offers and the listing an accepted offer opens travel in property details, not the map.
         return [];
       case 'lot_ad_set':
         return [result.plotIndex];

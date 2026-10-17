@@ -36,6 +36,8 @@ Anyone who is named becomes an idol, and every property grows **in place** with 
 ## A5 — Integer-Only Money, Escrowed Trades
 BRL cents, USDT/USDC micro-units, BTC satoshis and $NEFA micro-units (6 decimals) are integers end to end. A checkout locks the listing for one buyer for 15 minutes; settlement requires the signed payment for that buyer and method, rejects underpayment and replayed references, takes a 2.5% fee on the price and records any excess as owed back to the buyer. Token packs are escrowed when listed.
 
+Offers are ledger events too (`offer_made`, `offer_withdrawn`, `offer_declined`, `offer_accepted`), checked by the same reducer: one open bid per bidder per property, never on your own home, only the bidder withdraws, only the owner who received it answers. Accepting lists the property at exactly the offered price in the same event, or nothing changes; the bidder then pays through the escrowed checkout. No money moves with an offer.
+
 ## A6 — One Writer, Replayable State
 All state changes are ledger events appended to the journal before the API answers. Booting replays the journal from the first line; a line that no longer applies halts the boot instead of serving a different city. Simulated (demo) fans and real fans never share a journal.
 
