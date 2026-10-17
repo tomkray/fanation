@@ -27,6 +27,8 @@ export interface AppConfig {
   readonly port: number;
   readonly journalPath: string;
   readonly staticDir: string;
+  /** The public site; login links sent by Direct open here. */
+  readonly publicUrl: string;
   /** Profile pictures + verified names via Business Discovery (Facebook-login Graph token). */
   readonly avatars: {
     readonly directory: string;
@@ -136,6 +138,21 @@ function metaSecret(env: NodeJS.ProcessEnv, name: string, commentSource: Comment
   return readEnv(env, name) ?? (demo ? requireSecret(env, name, true) : '');
 }
 
+/** Login links travel by Direct, so outside the demo they must point at HTTPS. */
+function readPublicUrl(env: NodeJS.ProcessEnv, demo: boolean): string {
+  const raw = readEnv(env, 'NAOEUMFA_PUBLIC_URL') ?? 'https://www.naoeumfa.com';
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`NAOEUMFA_PUBLIC_URL is not a URL: "${raw}".`);
+  }
+  if (url.protocol !== 'https:' && !(demo && url.protocol === 'http:')) {
+    throw new Error('NAOEUMFA_PUBLIC_URL must use https.');
+  }
+  return url.origin;
+}
+
 function readCryptoRail(env: NodeJS.ProcessEnv, prefix: string): CryptoRail | undefined {
   const address = readEnv(env, `${prefix}_ADDRESS`);
   const network = readEnv(env, `${prefix}_NETWORK`);
@@ -190,6 +207,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: readInt(env, 'PORT', 8787, 1, 65_535),
     journalPath: path.resolve(readEnv(env, 'NAOEUMFA_JOURNAL_PATH') ?? defaultJournal),
     staticDir: path.resolve(readEnv(env, 'NAOEUMFA_STATIC_DIR') ?? 'dist'),
+    publicUrl: readPublicUrl(env, demo),
     avatars: {
       directory: path.resolve(readEnv(env, 'NAOEUMFA_AVATAR_DIR') ?? 'data/avatars'),
       graphBaseUrl: readEnv(env, 'NAOEUMFA_DISCOVERY_BASE_URL') ?? 'https://graph.facebook.com/v23.0',

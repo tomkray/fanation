@@ -11,7 +11,7 @@
  *   GET  /api/v1/avatars/:handle      cached Instagram profile picture
  *   GET  /api/v1/stream               Server-Sent Events: `city` on every change
  *   GET  /api/v1/webhooks/instagram   Meta subscription handshake
- *   POST /api/v1/webhooks/instagram   Meta `comments` webhook (HMAC verified)
+ *   POST /api/v1/webhooks/instagram   Meta `comments` + Direct `messages` webhook (HMAC verified)
  *   POST /api/v1/market/checkout      lock a listing and return PIX / crypto instructions
  *   POST /api/v1/payments/webhook     signed PSP callback → settlement
  *   POST /api/v1/dev/simulate-payment demo only: signs a PSP callback for the active checkout
@@ -34,13 +34,20 @@ import { logger } from '../../utils/logger.js';
 import { CityService } from '../cityService.js';
 import { AdNotFoundError, AdQueueFullError, AdService } from '../ads/adService.js';
 import { AuthLimitError, AuthService } from '../auth/authService.js';
+import { DmLoginService } from '../auth/dmLogin.js';
 import { AppConfig } from '../config.js';
 import { AvatarService } from '../instagram/avatarService.js';
 import { OfferError, OfferService } from '../market/offerService.js';
 import { header, HttpError, JSON_BODY_LIMIT, parseJson, readRawBody, sendError, sendJson } from './httpKit.js';
 import { handleWalletRoute, requireAppClient, requireSession, WalletContext } from './walletRoutes.js';
 import { parseMuseBatch } from '../instagram/museBridge.js';
-import { parseMetaCommentWebhook, resolveSubscriptionChallenge, verifyHmacSha256Hex, verifyMetaSignature } from '../instagram/metaWebhook.js';
+import {
+  parseMetaCommentWebhook,
+  parseMetaMessageWebhook,
+  resolveSubscriptionChallenge,
+  verifyHmacSha256Hex,
+  verifyMetaSignature,
+} from '../instagram/metaWebhook.js';
 import {
   buildCheckoutInstructions,
   isPaymentMethod,
@@ -93,10 +100,12 @@ export interface NaoeumfaServices {
   readonly ads: AdService;
   readonly auth: AuthService;
   readonly offers: OfferService;
+  /** Null until the official account's token can read and answer Direct. */
+  readonly dmLogin: DmLoginService | null;
 }
 
 export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServices): Server {
-  const { city, avatars, ads, auth, offers } = services;
+  const { city, avatars, ads, auth, offers, dmLogin } = services;
   const wallet: WalletContext = { config, city, auth, offers };
   /** Constant-time check of `Authorization: Bearer <NAOEUMFA_ADMIN_TOKEN>`; hashing equalises lengths. */
   function requireAdmin(req: IncomingMessage): void {
@@ -155,6 +164,13 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
     // Fetch pipeline is always on (Discovery or public-page interim).
     avatars: avatars.enabled,
     paymentRails: paymentRailsStatus(config),
+    login: {
+      officialHandle: config.meta.officialUsername ?? 'naoeumfa',
+      directUrl: `https://ig.me/m/${config.meta.officialUsername ?? 'naoeumfa'}`,
+      // Both halves are needed: the token answers, the app secret proves the message came from Meta.
+      ready: dmLogin !== null && config.meta.appSecret.length >= 16,
+      canSimulate: config.sandbox,
+    },
   };
 
   function handlePaymentCallback(rawBody: Buffer, signatureHex: string | undefined): { status: number; body: unknown } {
@@ -352,7 +368,18 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
               sendError(res, 401, 'INVALID_SIGNATURE', 'Invalid X-Hub-Signature-256.');
               return;
             }
-            const events = parseMetaCommentWebhook(parseJson(raw));
+            const body = parseJson(raw);
+            const messages = parseMetaMessageWebhook(body);
+            if (messages.length > 0 && !dmLogin) {
+              logger.warn('dm_login_off', { messages: messages.length });
+            }
+            for (const message of messages) {
+              // Answer Meta at once; the link goes out on its own.
+              dmLogin?.onMessage(message).catch((err: unknown) => {
+                logger.error('dm_login_failed', { message: err instanceof Error ? err.message : String(err) });
+              });
+            }
+            const events = parseMetaCommentWebhook(body);
             const outcomes = city.ingestComments(events, 'instagram_webhook');
             const portraits: string[] = [];
             for (const outcome of outcomes) {
@@ -363,7 +390,7 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
             if (portraits.length > 0) {
               avatars.enqueue(portraits);
             }
-            sendJson(res, 200, { received: events.length, applied: outcomes.length });
+            sendJson(res, 200, { received: events.length, applied: outcomes.length, messages: messages.length });
             return;
           }
 

@@ -1,45 +1,34 @@
 /**
- * "Connect": proving you are an Instagram @ without passwords (Axiom A10).
+ * Signing in (Axiom A10): only the Instagram account itself can open a session.
  *
- * Instagram Login only covers business/creator accounts, so every fan proves
- * their handle the way they already use Não É Um Fã: the site shows a one-time
- * code, they comment it on any @naoeumfa post, and the comment arrives
- * through Meta (signed webhook or the Graph API) with Meta's own author
- * username. A code only verifies the @ it was issued for, once, within 15
- * minutes. Muse dumps and typed names never open a session — Meta has to
- * name the author. The browser that asked for the code then receives a session.
+ * Instagram Login (OAuth) only covers professional accounts, so a fan proves
+ * their @ through Direct: they message the official account, Meta delivers
+ * that message signed and with the sender's account id, and we answer in the
+ * same inbox with a one-time link. Only whoever reads that inbox can use it.
+ * Typed names, comments and Muse dumps never open a session.
  *
- * Only SHA-256 digests of secrets are kept; sessions survive restarts.
+ * Links: 256 bits, 10 minutes, single use. Sessions: 30 days, survive
+ * restarts. Only SHA-256 digests of either are ever kept.
  */
 
-import { createHash, randomBytes, randomInt } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { normalizeInstagramHandle } from '../../core/antiFraud.js';
-import { InstagramCommentEvent } from '../../core/types.js';
-import { CommentSourceName } from '../../shared/apiContract.js';
 import { logger } from '../../utils/logger.js';
 
-export const CHALLENGE_TTL_MS = 15 * 60_000;
+export const LOGIN_LINK_TTL_MS = 10 * 60_000;
 export const SESSION_TTL_MS = 30 * 86_400_000;
-/** No 0/O, 1/I/L: the code is typed on a phone. */
-const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
-const CODE_LENGTH = 6;
-const CODE_PATTERN = /NEFA-([2-9A-HJ-NP-Z]{6})/gi;
-const MAX_PENDING_CHALLENGES = 2_000;
-const MAX_PENDING_PER_HANDLE = 3;
-const CHALLENGES_PER_CLIENT = 8;
-const CLIENT_WINDOW_MS = 10 * 60_000;
+/** 32 random bytes in base64url. */
+export const LOGIN_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const MAX_PENDING_LINKS = 2_000;
+const MAX_LINKS_PER_HANDLE = 3;
 const MAX_SESSIONS_PER_HANDLE = 10;
 
-export type ChallengeState = 'PENDING' | 'VERIFIED' | 'EXPIRED' | 'NONE';
-
-interface Challenge {
+interface LoginLink {
   readonly handle: string;
-  readonly code: string;
-  readonly secretDigest: string;
+  readonly accountId: string;
+  readonly createdAtMs: number;
   readonly expiresAtMs: number;
-  verified: boolean;
 }
 
 interface Session {
@@ -59,110 +48,51 @@ function digest(secret: string): string {
   return createHash('sha256').update(secret).digest('hex');
 }
 
-function newCode(): string {
-  let code = '';
-  for (let i = 0; i < CODE_LENGTH; i += 1) {
-    code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
-  }
-  return `NEFA-${code}`;
-}
-
 export class AuthService {
-  /** By secret digest (the browser's cookie) and by code (what arrives in comments). */
-  private readonly challenges = new Map<string, Challenge>();
-  private readonly challengeByCode = new Map<string, Challenge>();
+  /** By link-token digest. */
+  private readonly links = new Map<string, LoginLink>();
   private readonly sessions = new Map<string, Session>();
-  private readonly clientHits = new Map<string, number[]>();
 
   constructor(
     private readonly sessionsPath: string,
-    private readonly now: () => number = Date.now,
-    /** Demo-only: the sandbox simulate route may prove a code. Live city never sets this. */
-    private readonly allowSimulated = false
+    private readonly now: () => number = Date.now
   ) {
     this.loadSessions();
   }
 
-  createChallenge(rawHandle: string, clientKey: string): { readonly handle: string; readonly code: string; readonly secret: string; readonly expiresAtMs: number } {
-    const handle = normalizeInstagramHandle(rawHandle);
-    if (!handle) {
-      throw new AuthLimitError('Enter a valid Instagram @handle.');
-    }
+  /** Issued only after Meta proved who sent the Direct message. Returns the raw token, once. */
+  createLoginLink(handle: string, accountId: string): string {
     const nowMs = this.now();
     this.prune(nowMs);
-    const hits = (this.clientHits.get(clientKey) ?? []).filter((t) => nowMs - t < CLIENT_WINDOW_MS);
-    if (hits.length >= CHALLENGES_PER_CLIENT) {
-      throw new AuthLimitError('Too many codes requested; wait a few minutes.');
+    if (this.links.size >= MAX_PENDING_LINKS) {
+      throw new AuthLimitError('Login is busy; try again in a minute.');
     }
-    hits.push(nowMs);
-    this.clientHits.set(clientKey, hits);
-    if (this.challenges.size >= MAX_PENDING_CHALLENGES) {
-      throw new AuthLimitError('Verification is busy; try again in a minute.');
-    }
-    const forHandle = [...this.challenges.values()].filter((c) => c.handle === handle && !c.verified);
-    if (forHandle.length >= MAX_PENDING_PER_HANDLE) {
-      this.drop(forHandle[0]);
-    }
-
-    let code = newCode();
-    while (this.challengeByCode.has(code)) {
-      code = newCode();
-    }
-    const secret = randomBytes(32).toString('base64url');
-    const challenge: Challenge = { handle, code, secretDigest: digest(secret), expiresAtMs: nowMs + CHALLENGE_TTL_MS, verified: false };
-    this.challenges.set(challenge.secretDigest, challenge);
-    this.challengeByCode.set(code, challenge);
-    return { handle, code, secret, expiresAtMs: challenge.expiresAtMs };
-  }
-
-  /**
-   * A code counts only when its own @ wrote it, and only when Meta named that
-   * author (signed webhook or Graph poll). A Muse batch is not that proof.
-   */
-  observeComments(events: readonly InstagramCommentEvent[], source: CommentSourceName): void {
-    const fromMeta = source === 'instagram_webhook' || source === 'instagram_poll';
-    const fromSandbox = source === 'simulated' && this.allowSimulated;
-    if (!fromMeta && !fromSandbox) {
-      logger.warn('auth_untrusted_source', { source });
-      return;
-    }
-    const nowMs = this.now();
-    for (const event of events) {
-      const author = normalizeInstagramHandle(event.authorUsername);
-      if (!author) {
-        continue;
-      }
-      for (const match of event.text.matchAll(CODE_PATTERN)) {
-        const challenge = this.challengeByCode.get(`NEFA-${match[1].toUpperCase()}`);
-        if (challenge && !challenge.verified && challenge.handle === author && nowMs < challenge.expiresAtMs) {
-          challenge.verified = true;
-          logger.info('auth_handle_verified', { handle: author });
-        }
+    const mine = [...this.links.entries()].filter(([, l]) => l.handle === handle).sort((a, b) => a[1].createdAtMs - b[1].createdAtMs);
+    while (mine.length >= MAX_LINKS_PER_HANDLE) {
+      const oldest = mine.shift();
+      if (oldest) {
+        this.links.delete(oldest[0]);
       }
     }
+    const token = randomBytes(32).toString('base64url');
+    this.links.set(digest(token), { handle, accountId, createdAtMs: nowMs, expiresAtMs: nowMs + LOGIN_LINK_TTL_MS });
+    return token;
   }
 
-  /** The code a browser is waiting on, for the demo "simulate my comment" helper. */
-  pendingFor(secret: string): { readonly handle: string; readonly code: string } | null {
-    const challenge = this.challenges.get(digest(secret));
-    return challenge && !challenge.verified && this.now() < challenge.expiresAtMs ? { handle: challenge.handle, code: challenge.code } : null;
+  /** Which @ a link would sign in as, without using it (the browser asks "is this you?"). */
+  peekLoginLink(token: string): string | null {
+    return this.liveLink(token)?.handle ?? null;
   }
 
-  /** Polled by the browser; on success the challenge is consumed and a session token is minted once. */
-  poll(secret: string): { readonly state: ChallengeState; readonly handle: string | null; readonly sessionToken: string | null } {
-    const challenge = this.challenges.get(digest(secret));
-    if (!challenge) {
-      return { state: 'NONE', handle: null, sessionToken: null };
+  /** Uses the link exactly once and opens a session for its @. */
+  redeemLoginLink(token: string): { readonly handle: string; readonly sessionToken: string } | null {
+    const link = this.liveLink(token);
+    if (!link) {
+      return null;
     }
-    if (challenge.verified) {
-      this.drop(challenge);
-      return { state: 'VERIFIED', handle: challenge.handle, sessionToken: this.openSession(challenge.handle) };
-    }
-    if (this.now() >= challenge.expiresAtMs) {
-      this.drop(challenge);
-      return { state: 'EXPIRED', handle: challenge.handle, sessionToken: null };
-    }
-    return { state: 'PENDING', handle: challenge.handle, sessionToken: null };
+    this.links.delete(digest(token));
+    logger.info('auth_link_redeemed', { handle: link.handle });
+    return { handle: link.handle, sessionToken: this.openSession(link.handle) };
   }
 
   sessionHandle(token: string | undefined): string | null {
@@ -187,6 +117,21 @@ export class AuthService {
     }
   }
 
+  private liveLink(token: string): LoginLink | null {
+    if (!LOGIN_TOKEN_PATTERN.test(token)) {
+      return null;
+    }
+    const link = this.links.get(digest(token));
+    if (!link) {
+      return null;
+    }
+    if (this.now() >= link.expiresAtMs) {
+      this.links.delete(digest(token));
+      return null;
+    }
+    return link;
+  }
+
   private openSession(handle: string): string {
     const nowMs = this.now();
     const mine = [...this.sessions.entries()].filter(([, s]) => s.handle === handle).sort((a, b) => a[1].createdAtMs - b[1].createdAtMs);
@@ -202,21 +147,10 @@ export class AuthService {
     return token;
   }
 
-  private drop(challenge: Challenge): void {
-    this.challenges.delete(challenge.secretDigest);
-    this.challengeByCode.delete(challenge.code);
-  }
-
   private prune(nowMs: number): void {
-    for (const challenge of [...this.challenges.values()]) {
-      // Verified challenges wait for their browser a little longer than the code's own lifetime.
-      if (nowMs >= challenge.expiresAtMs + (challenge.verified ? CHALLENGE_TTL_MS : 0)) {
-        this.drop(challenge);
-      }
-    }
-    for (const [key, hits] of this.clientHits) {
-      if (hits.every((t) => nowMs - t >= CLIENT_WINDOW_MS)) {
-        this.clientHits.delete(key);
+    for (const [key, link] of this.links) {
+      if (nowMs >= link.expiresAtMs) {
+        this.links.delete(key);
       }
     }
   }

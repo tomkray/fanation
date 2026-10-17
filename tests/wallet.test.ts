@@ -1,6 +1,6 @@
 /**
- * Connect + wallet (A10): a code only verifies the @ that comments it, once,
- * before it expires; sessions survive a restart; $NEFA transfers and listing
+ * Login + wallet (A10): a Direct login link signs in once, before it
+ * expires; sessions survive a restart; $NEFA transfers and listing
  * cancellations are ledger events with integer amounts.
  */
 
@@ -10,7 +10,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { applyCommentEvent, applyLedgerEvent, createCityState } from '../src/core/cityLedger.js';
 import { InstagramCommentEvent } from '../src/core/types.js';
-import { AuthService, CHALLENGE_TTL_MS } from '../src/infrastructure/auth/authService.js';
+import { AuthService, LOGIN_LINK_TTL_MS, LOGIN_TOKEN_PATTERN } from '../src/infrastructure/auth/authService.js';
 import { OfferError, OfferService } from '../src/infrastructure/market/offerService.js';
 
 function commentBy(author: string, text: string, id: string): InstagramCommentEvent {
@@ -21,45 +21,44 @@ function tempFile(name: string): string {
   return path.join(mkdtempSync(path.join(tmpdir(), 'naoeumfa-wallet-')), name);
 }
 
-describe('connect with an Instagram comment', () => {
-  it('verifies only when the code is commented by its own @, then opens one session', () => {
+describe('login link from Direct', () => {
+  it('signs in once, survives a restart, and dies after use or 10 minutes', () => {
     let now = 1_800_000_000_000;
     const file = tempFile('sessions.json');
     const auth = new AuthService(file, () => now);
-    const { code, secret } = auth.createChallenge('@Alice.Fan', 'ip-1');
-    expect(code).toMatch(/^NEFA-[2-9A-HJ-NP-Z]{6}$/);
-    expect(auth.poll(secret).state).toBe('PENDING');
+    const token = auth.createLoginLink('alice.fan', '17841400000000001');
+    expect(token).toMatch(LOGIN_TOKEN_PATTERN);
 
-    auth.observeComments([commentBy('mallory', `${code} it's me!`, 'c1')], 'instagram_webhook');
-    expect(auth.poll(secret).state).toBe('PENDING');
+    // Peeking shows who the link is for without using it.
+    expect(auth.peekLoginLink(token)).toBe('alice.fan');
+    expect(auth.peekLoginLink(`${token.slice(0, -1)}A`)).toBeNull();
+    expect(auth.peekLoginLink('NEFA-ABC234')).toBeNull();
 
-    auth.observeComments([commentBy('alice.fan', `my code ${code.toLowerCase()}`, 'c2')], 'muse_bridge');
-    expect(auth.poll(secret).state).toBe('PENDING');
-
-    auth.observeComments([commentBy('alice.fan', `my code ${code.toLowerCase()}`, 'c2')], 'instagram_webhook');
-    const verified = auth.poll(secret);
-    expect(verified).toMatchObject({ state: 'VERIFIED', handle: 'alice.fan' });
-    expect(auth.sessionHandle(verified.sessionToken ?? '')).toBe('alice.fan');
-    // Single use: the same browser secret cannot mint a second session.
-    expect(auth.poll(secret).state).toBe('NONE');
+    const signedIn = auth.redeemLoginLink(token);
+    expect(signedIn?.handle).toBe('alice.fan');
+    expect(auth.sessionHandle(signedIn?.sessionToken)).toBe('alice.fan');
+    // Single use: the same link cannot open a second session.
+    expect(auth.redeemLoginLink(token)).toBeNull();
 
     const restarted = new AuthService(file, () => now);
-    expect(restarted.sessionHandle(verified.sessionToken ?? '')).toBe('alice.fan');
-    restarted.revoke(verified.sessionToken ?? '');
-    expect(restarted.sessionHandle(verified.sessionToken ?? '')).toBeNull();
+    expect(restarted.sessionHandle(signedIn?.sessionToken)).toBe('alice.fan');
+    restarted.revoke(signedIn?.sessionToken);
+    expect(restarted.sessionHandle(signedIn?.sessionToken)).toBeNull();
 
-    const late = auth.createChallenge('alice.fan', 'ip-1');
-    now += CHALLENGE_TTL_MS + 1;
-    auth.observeComments([commentBy('alice.fan', late.code, 'c3')], 'instagram_poll');
-    expect(auth.poll(late.secret).state).toBe('EXPIRED');
+    const late = auth.createLoginLink('alice.fan', '17841400000000001');
+    now += LOGIN_LINK_TTL_MS + 1;
+    expect(auth.redeemLoginLink(late)).toBeNull();
   });
 
-  it('limits how many codes one client can ask for', () => {
-    const auth = new AuthService(tempFile('s.json'));
-    for (let i = 0; i < 8; i += 1) {
-      auth.createChallenge(`fan_${i}`, 'ip-9');
-    }
-    expect(() => auth.createChallenge('fan_x', 'ip-9')).toThrow(/Too many codes/);
+  it('keeps at most three live links per @', () => {
+    let now = 1_800_000_000_000;
+    const auth = new AuthService(tempFile('s.json'), () => now);
+    const links = [0, 1, 2, 3].map(() => {
+      now += 1;
+      return auth.createLoginLink('bob', '1');
+    });
+    expect(auth.peekLoginLink(links[0])).toBeNull();
+    expect(links.slice(1).every((l) => auth.peekLoginLink(l) === 'bob')).toBe(true);
   });
 });
 

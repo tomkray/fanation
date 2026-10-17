@@ -1,10 +1,10 @@
 /**
  * Connect + profile wallet routes (Axiom A10).
  *
- *   POST /api/v1/auth/challenge          { handle } → one-time code to comment on Instagram
- *   GET  /api/v1/auth/status             polled by the browser; sets the session cookie once verified
+ *   POST /api/v1/auth/link/peek          { token } → which @ a Direct login link signs in as
+ *   POST /api/v1/auth/link/redeem        { token } → uses the link once, sets the session cookie
  *   POST /api/v1/auth/logout
- *   POST /api/v1/dev/auth/simulate       demo only: plays the verification comment for you
+ *   POST /api/v1/dev/auth/link           demo only: { handle } → a link without Instagram
  *   GET  /api/v1/me                      the signed-in profile (stats, properties, listings, offers)
  *   POST /api/v1/me/listings             { plotIndex, priceBrlCents } list a property you own
  *   POST /api/v1/me/listings/:id/cancel
@@ -22,8 +22,8 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { normalizeInstagramHandle } from '../../core/antiFraud.js';
 import { LotAdError, validateLotAd } from '../../core/lotAd.js';
-import { AuthChallengeDto, AuthStatusDto, MeDto } from '../../shared/apiContract.js';
-import { AuthService, CHALLENGE_TTL_MS, SESSION_TTL_MS } from '../auth/authService.js';
+import { AuthLinkDto, MeDto } from '../../shared/apiContract.js';
+import { AuthService, LOGIN_TOKEN_PATTERN, SESSION_TTL_MS } from '../auth/authService.js';
 import { CityService } from '../cityService.js';
 import { AppConfig } from '../config.js';
 import { OfferService } from '../market/offerService.js';
@@ -37,7 +37,14 @@ export interface WalletContext {
 }
 
 const SESSION_COOKIE = 'nefa_session';
-const CHALLENGE_COOKIE = 'nefa_challenge';
+
+function readLinkToken(body: Record<string, unknown>): string {
+  const token = typeof body.token === 'string' ? body.token : '';
+  if (!LOGIN_TOKEN_PATTERN.test(token)) {
+    throw new HttpError(400, 'INVALID_LINK', 'Malformed login link.');
+  }
+  return token;
+}
 const LISTING_CANCEL_ROUTE = /^\/api\/v1\/me\/listings\/(lst_[0-9a-z_]{1,40})\/cancel$/;
 const OFFER_ROUTE = /^\/api\/v1\/properties\/(\d{1,10})\/offers$/;
 const OFFER_DECISION_ROUTE = /^\/api\/v1\/me\/offers\/(off_[0-9a-f]{16})\/(accept|decline|withdraw)$/;
@@ -77,36 +84,25 @@ export async function handleWalletRoute(ctx: WalletContext, req: IncomingMessage
   const route = `${req.method ?? 'GET'} ${url.pathname}`;
 
   switch (route) {
-    case 'POST /api/v1/auth/challenge': {
+    case 'POST /api/v1/auth/link/peek': {
       requireAppClient(config, req);
-      const body = await readJsonObject(req);
-      const handle = typeof body.handle === 'string' ? normalizeInstagramHandle(body.handle) : null;
+      const handle = auth.peekLoginLink(readLinkToken(await readJsonObject(req)));
       if (!handle) {
-        throw new HttpError(400, 'INVALID_HANDLE', 'Enter a valid Instagram @handle.');
+        throw new HttpError(404, 'LINK_INVALID', 'This link expired or was already used. Ask for a new one in Direct.');
       }
-      const challenge = auth.createChallenge(handle, req.socket.remoteAddress ?? 'unknown');
-      const dto: AuthChallengeDto = {
-        handle: challenge.handle,
-        code: challenge.code,
-        expiresAtIso: new Date(challenge.expiresAtMs).toISOString(),
-        officialHandle: config.meta.officialUsername ?? 'naoeumfa',
-        canSimulate: config.sandbox,
-      };
-      res.setHeader('Set-Cookie', cookie(req, CHALLENGE_COOKIE, challenge.secret, CHALLENGE_TTL_MS / 1000, '/api/v1'));
-      sendJson(res, 201, dto);
+      const dto: AuthLinkDto = { handle };
+      sendJson(res, 200, dto);
       return true;
     }
 
-    case 'GET /api/v1/auth/status': {
-      const secret = parseCookies(req).get(CHALLENGE_COOKIE);
-      const result = secret ? auth.poll(secret) : { state: 'NONE' as const, handle: null, sessionToken: null };
-      if (result.sessionToken) {
-        res.setHeader('Set-Cookie', [
-          cookie(req, SESSION_COOKIE, result.sessionToken, SESSION_TTL_MS / 1000),
-          cookie(req, CHALLENGE_COOKIE, '', 0, '/api/v1'),
-        ]);
+    case 'POST /api/v1/auth/link/redeem': {
+      requireAppClient(config, req);
+      const result = auth.redeemLoginLink(readLinkToken(await readJsonObject(req)));
+      if (!result) {
+        throw new HttpError(404, 'LINK_INVALID', 'This link expired or was already used. Ask for a new one in Direct.');
       }
-      const dto: AuthStatusDto = { state: result.state, handle: result.handle };
+      res.setHeader('Set-Cookie', cookie(req, SESSION_COOKIE, result.sessionToken, SESSION_TTL_MS / 1000));
+      const dto: AuthLinkDto = { handle: result.handle };
       sendJson(res, 200, dto);
       return true;
     }
@@ -119,21 +115,18 @@ export async function handleWalletRoute(ctx: WalletContext, req: IncomingMessage
       return true;
     }
 
-    case 'POST /api/v1/dev/auth/simulate': {
+    case 'POST /api/v1/dev/auth/link': {
       if (!config.sandbox) {
         throw new HttpError(404, 'NOT_FOUND', 'Route not found.');
       }
       requireAppClient(config, req);
-      const pending = auth.pendingFor(parseCookies(req).get(CHALLENGE_COOKIE) ?? '');
-      if (!pending) {
-        throw new HttpError(409, 'NO_PENDING_CODE', 'Ask for a code first.');
+      const body = await readJsonObject(req);
+      const handle = typeof body.handle === 'string' ? normalizeInstagramHandle(body.handle) : null;
+      if (!handle) {
+        throw new HttpError(400, 'INVALID_HANDLE', 'Enter a valid Instagram @handle.');
       }
-      // The same path a real comment takes: through the city's comment intake, authored by that @.
-      city.ingestComments(
-        [{ commentId: `auth_${pending.code}`, mediaId: 'connect', text: pending.code, authorUsername: pending.handle, authorId: null, receivedAtMs: Date.now() }],
-        'simulated'
-      );
-      sendJson(res, 200, { ok: true });
+      // Demo stands in for Direct; the browser then goes through the same peek → redeem.
+      sendJson(res, 201, { token: auth.createLoginLink(handle, `sandbox_${handle}`) });
       return true;
     }
 

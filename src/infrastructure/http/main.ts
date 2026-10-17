@@ -9,6 +9,8 @@ import { loadConfig } from '../config.js';
 import { maybeCreateDemoListings } from '../demo/demoMarketMaker.js';
 import { AdService } from '../ads/adService.js';
 import { AuthService } from '../auth/authService.js';
+import { DmLoginService } from '../auth/dmLogin.js';
+import { IdentityRegistry } from '../auth/identityRegistry.js';
 import { OfferService } from '../market/offerService.js';
 import { AvatarService } from '../instagram/avatarService.js';
 import { CommentPoller } from '../instagram/commentPoller.js';
@@ -103,10 +105,23 @@ function main(): void {
   const ads = new AdService(config.adsPath, config.sandbox);
   // Demo profiles and offers never share files with the real city, like the journal.
   const book = config.commentSource === 'simulated' ? '.demo' : '';
-  const auth = new AuthService(`data/sessions${book}.json`, Date.now, config.sandbox);
+  const auth = new AuthService(`data/sessions${book}.json`);
+  const identities = new IdentityRegistry(`data/identities${book}.json`);
   const offers = new OfferService(`data/offers${book}.json`);
-  city.observeComments((events, source) => auth.observeComments(events, source));
-  const server = createNaoeumfaServer(config, { city, avatars, ads, auth, offers });
+  const dmLogin =
+    config.meta.igAccessToken && config.meta.igUserId
+      ? new DmLoginService({
+          graphBaseUrl: config.meta.graphBaseUrl,
+          igUserId: config.meta.igUserId,
+          accessToken: config.meta.igAccessToken,
+          tokenTransport: config.meta.tokenTransport,
+          publicUrl: config.publicUrl,
+          auth,
+          identities,
+        })
+      : null;
+  logger.info(dmLogin ? 'dm_login_on' : 'dm_login_off', { publicUrl: config.publicUrl });
+  const server = createNaoeumfaServer(config, { city, avatars, ads, auth, offers, dmLogin });
   server.listen(config.port, config.host, () => {
     logger.info('api_listening', { url: `http://${config.host}:${config.port}`, commentSource: config.commentSource });
     poller?.start();

@@ -113,19 +113,9 @@ export interface MeDto {
   readonly offersMade: readonly OfferDto[];
 }
 
-export interface AuthChallengeDto {
+/** The @ a one-time login link signs in as. */
+export interface AuthLinkDto {
   readonly handle: string;
-  /** Comment this on any post of the official account. */
-  readonly code: string;
-  readonly expiresAtIso: string;
-  readonly officialHandle: string;
-  /** Demo only: the server can play the comment for you. */
-  readonly canSimulate: boolean;
-}
-
-export interface AuthStatusDto {
-  readonly state: 'PENDING' | 'VERIFIED' | 'EXPIRED' | 'NONE';
-  readonly handle: string | null;
 }
 
 export interface StandingDto {
@@ -311,6 +301,15 @@ export interface PublicConfigDto {
   /** Profile pictures are served from /api/v1/avatars/:handle (Discovery fetch and/or seeded cache). */
   readonly avatars: boolean;
   readonly paymentRails: Readonly<Record<PaymentMethod, boolean>>;
+  /** Login by Direct: message `officialHandle`, get a one-time link back. */
+  readonly login: {
+    readonly officialHandle: string;
+    readonly directUrl: string;
+    /** False until the Meta app can read and answer Direct messages. */
+    readonly ready: boolean;
+    /** Demo only: the server issues a link without Instagram. */
+    readonly canSimulate: boolean;
+  };
 }
 
 export interface CheckoutResponseDto {

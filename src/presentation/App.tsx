@@ -9,6 +9,7 @@ import type { AdDto, AdsDto, PropertyDetailDto } from '../shared/apiContract.js'
 import { api, avatarUrl } from './api/client.js';
 import { AdvertiseModal } from './components/AdvertiseModal.js';
 import { ConnectModal } from './components/ConnectModal.js';
+import { LinkLoginModal } from './components/LinkLoginModal.js';
 import { Avatar, AvatarsEnabled, InstagramVerified } from './components/Identity.js';
 import { ProfileModal } from './components/ProfileModal.js';
 import { TokenomicsModal } from './components/TokenomicsModal.js';
@@ -48,6 +49,16 @@ const CINEMATIC_CHUNKS = 64;
 const ADS_REFRESH_MS = 60_000;
 const REORGANIZED_NOTICE_MS = 4_000;
 
+/** A Direct login link lands as `#entrar=<token>`; the fragment never reaches a server log. */
+function takeLoginToken(): string | null {
+  const match = /^#entrar=([A-Za-z0-9_-]{43})$/.exec(window.location.hash);
+  if (!match) {
+    return null;
+  }
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+  return match[1];
+}
+
 export const App: React.FC = () => {
   const { config, summary, store, status, error } = useWorld({ live: !MANUAL_FRAMES });
   useCityAmbient(!CINEMATIC && !MANUAL_FRAMES);
@@ -60,6 +71,7 @@ export const App: React.FC = () => {
   const [view, setView] = useState<WorldView>('city');
   const [market, setMarket] = useState<{ readonly focusListingId: string | null } | null>(null);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [loginToken, setLoginToken] = useState<string | null>(() => (CINEMATIC ? null : takeLoginToken()));
   const [tokenomicsOpen, setTokenomicsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const session = useSession(summary?.version ?? 0);
@@ -386,12 +398,23 @@ export const App: React.FC = () => {
         {tokenomicsOpen && summary && <TokenomicsModal tokenomics={summary.tokenomics} onClose={() => setTokenomicsOpen(false)} />}
         {connectOpen && (
           <ConnectModal
-            onConnected={() => {
+            login={config?.login ?? null}
+            onDemoLink={(token) => {
               setConnectOpen(false);
+              setLoginToken(token);
+            }}
+            onClose={() => setConnectOpen(false)}
+          />
+        )}
+        {loginToken && (
+          <LinkLoginModal
+            token={loginToken}
+            onConnected={() => {
+              setLoginToken(null);
               session.refresh();
               setProfileOpen(true);
             }}
-            onClose={() => setConnectOpen(false)}
+            onClose={() => setLoginToken(null)}
           />
         )}
         {profileOpen && session.me && (

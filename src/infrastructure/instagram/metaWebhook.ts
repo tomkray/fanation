@@ -1,7 +1,8 @@
 /**
  * Meta webhook boundary: subscription handshake, `X-Hub-Signature-256`
- * verification over the raw bytes, and parsing of the `comments` field in
- * both body shapes Meta delivers (`entry[].changes[]` and flat `entry[]`).
+ * verification over the raw bytes, parsing of the `comments` field in both
+ * body shapes Meta delivers (`entry[].changes[]` and flat `entry[]`), and
+ * Direct messages (`entry[].messaging[]`) for login.
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -76,6 +77,46 @@ function toCommentEvent(value: unknown, entryTimeMs: number): InstagramCommentEv
     authorId: from ? str(from, 'id') : null,
     receivedAtMs: entryTimeMs,
   };
+}
+
+/** A Direct message sent to the official account. `senderId` is Meta's id for the sender's account. */
+export interface InstagramDirectMessage {
+  readonly senderId: string;
+  readonly messageId: string;
+  readonly text: string;
+  readonly atMs: number;
+}
+
+/** Inbound Direct messages only: our own replies (echoes) and non-text messages are dropped. */
+export function parseMetaMessageWebhook(body: unknown, nowMs: number = Date.now()): InstagramDirectMessage[] {
+  if (!isRecord(body) || body.object !== 'instagram' || !Array.isArray(body.entry)) {
+    return [];
+  }
+  const messages: InstagramDirectMessage[] = [];
+  for (const entry of body.entry) {
+    if (!isRecord(entry) || !Array.isArray(entry.messaging)) {
+      continue;
+    }
+    const ownId = str(entry, 'id');
+    for (const item of entry.messaging) {
+      if (!isRecord(item) || !isRecord(item.sender) || !isRecord(item.message)) {
+        continue;
+      }
+      const message = item.message;
+      if (message.is_echo === true) {
+        continue;
+      }
+      const senderId = str(item.sender, 'id');
+      const messageId = str(message, 'mid');
+      const text = str(message, 'text');
+      if (!senderId || !messageId || !text || senderId === ownId) {
+        continue;
+      }
+      const atMs = typeof item.timestamp === 'number' && item.timestamp > 0 ? item.timestamp : nowMs;
+      messages.push({ senderId, messageId, text: text.slice(0, 500), atMs });
+    }
+  }
+  return messages;
 }
 
 export function parseMetaCommentWebhook(body: unknown, nowMs: number = Date.now()): InstagramCommentEvent[] {
