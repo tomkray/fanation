@@ -12,7 +12,7 @@ import { AdService } from '../src/infrastructure/ads/adService.js';
 
 const valid = {
   placement: 'ZEPPELIN',
-  city: 'MUSIC',
+  city: 'GENESIS',
   days: 7,
   contactEmail: 'brand@example.com',
   creative: { headline: 'NEON COLA', tagline: 'The drink of fandoms', partnerHandle: '@NeonCola', backgroundHex: '#3a0010', accentHex: '#FF375F' },
@@ -23,8 +23,12 @@ describe('ad requests', () => {
     const result = validateAdRequest(valid);
     expect(result).toMatchObject({
       ok: true,
-      request: { placement: 'ZEPPELIN', city: 'MUSIC', days: 7, creative: { partnerHandle: 'neoncola', backgroundHex: '#3A0010' } },
+      request: { placement: 'ZEPPELIN', city: 'GENESIS', days: 7, creative: { partnerHandle: 'neoncola', backgroundHex: '#3A0010' } },
     });
+  });
+
+  it('maps legacy quadrant city names onto Genesis', () => {
+    expect(validateAdRequest({ ...valid, city: 'MUSIC' })).toMatchObject({ ok: true, request: { city: 'GENESIS' } });
   });
 
   it('refuses bidi tricks, markup, bad colours, bad handles and impossible durations', () => {

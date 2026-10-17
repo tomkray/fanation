@@ -1,28 +1,25 @@
 /**
- * City layout (Axiom A3), built to grow forever without ever being redrawn.
+ * City layout (Axiom A3), built to grow forever from Genesis outward.
  *
  * Territory — the grid is cut into blocks of 3×3 lots with a street between
  * blocks. Block row 0 and block column 0 are the two grand avenues; they
- * cross at the Capital and split the plane into four unbounded quadrants,
- * one per city. Every lot belongs to exactly one territory by geometry alone,
- * so cities can never grow into each other.
+ * cross at Genesis (a sacred disc with no properties). Every other lot is
+ * the one planet city. Category never splits the map.
  *
  * Placement — fully determined by arrival order:
  * - a catalogued idol named for the first time gets a landmark block on the
- *   next free point of its city's wide golden spiral;
- * - anyone else named before owning a home gets one lot on Community City's
- *   golden spiral;
+ *   next free point of the planet's wide golden spiral around Genesis;
+ * - anyone else named before owning a home gets one lot on the same spiral;
  * - a fan's home is the next free lot of a solid disc around the idol's
  *   property, in exact order of distance (integer maths only). Once that disc
  *   is closed in by other districts, the neighbourhood restarts as a new disc
  *   at the free lot nearest to it, so it stays in one piece.
  *
- * Scale — the chunk index (taken lots per city per chunk) answers "where is
- * the nearest room?" by skipping full chunks in O(1), so a crowded city costs
- * a few thousand lookups instead of a walk over every lot in between.
+ * Scale — the chunk index (taken lots per chunk) answers "where is the
+ * nearest room?" by skipping full chunks in O(1).
  */
 
-import { CITY_SITES, CityId, cityAtQuadrant, citySite } from './cities.js';
+import { CITY_SITES, CityId, citySite } from './cities.js';
 import { PropertyFootprint } from './property.js';
 import { spiralCell } from './spiral.js';
 
@@ -33,20 +30,22 @@ export const BLOCK_PITCH_METERS = LOTS_PER_BLOCK_SIDE * LOT_SIZE_METERS + STREET
 /** Blocks per side of a streaming chunk (≈ 500 m). */
 export const CHUNK_BLOCKS = 8;
 const CHUNK_LOTS = CHUNK_BLOCKS * LOTS_PER_BLOCK_SIDE;
-/** Distance between landmark blocks on a city's spiral, in lots (≈ two blocks). */
+/** Distance between landmark blocks on the Genesis spiral, in lots (≈ two blocks). */
 export const LANDMARK_SPACING_CELLS = 6;
-/** Lots around the avenues' crossing that belong to the Capital (no properties). */
-export const CAPITAL_RADIUS_LOTS = 15;
-/** City spirals place one lot per step. */
+/** Lots around the avenues' crossing that belong to Genesis plaza (no properties). */
+export const GENESIS_RADIUS_LOTS = 15;
+/** @deprecated Alias kept so older scripts keep compiling; use GENESIS_RADIUS_LOTS. */
+export const CAPITAL_RADIUS_LOTS = GENESIS_RADIUS_LOTS;
+/** Planet spiral places one lot per step. */
 const TIGHT_SPIRAL_SCALE = 1 / Math.sqrt(Math.PI);
 /** A neighbourhood disc holds up to π·180² ≈ 100k homes before it continues as a new disc. */
 const DISC_RADIUS_LOTS = 180;
 /** A restart farther than this from the last one is a new neighbourhood (closer ones just fill gaps). */
 const NEIGHBOURHOOD_GAP_LOTS = 6;
-/** Taken lots in a row before a city spiral asks the chunk index where the room is. */
+/** Taken lots in a row before the spiral asks the chunk index where the room is. */
 const BASE_PATIENCE = 96;
 const MAX_PATIENCE = 1 << 16;
-/** Tripwires only: territories are unbounded, so a free lot always exists. */
+/** Tripwires only: the planet is unbounded, so a free lot always exists. */
 const MAX_STEPS = 50_000_000;
 const MAX_CHUNK_RINGS = 20_000;
 /** Cells are packed into one safe integer: ±33 million lots per axis. */
@@ -58,7 +57,7 @@ export interface GridCell {
   readonly gridR: number;
 }
 
-/** Golden spiral from a city's centre; it never moves so landmarks spread around the whole city. */
+/** Golden spiral from Genesis; it never moves so landmarks spread around the whole planet. */
 interface SpiralCursor {
   readonly centerQ: number;
   readonly centerR: number;
@@ -82,9 +81,9 @@ export interface CityLayout {
   readonly occupied: Set<number>;
   /** Taken lots per `${city}@${chunkQ}:${chunkR}`. */
   readonly fill: Map<string, number>;
-  /** Wide spiral per city for landmark blocks. */
+  /** Wide spiral for landmark blocks (one for the planet). */
   readonly landmarkCursors: Map<CityId, SpiralCursor>;
-  /** Tight spiral per city for one-lot idol anchors. */
+  /** Tight spiral for one-lot idol anchors. */
   readonly lotCursors: Map<CityId, SpiralCursor>;
   /** One disc per idol for their fans' homes. */
   readonly homeCursors: Map<string, DiscCursor>;
@@ -97,17 +96,20 @@ export function blockOf(cell: number): number {
   return Math.floor((cell + 1) / LOTS_PER_BLOCK_SIDE);
 }
 
-/** The city that owns a lot, or null for the grand avenues. */
+/**
+ * The city that owns a lot, or null for the grand avenues and the Genesis
+ * plaza (nothing is minted there).
+ */
 export function territoryOf(q: number, r: number): CityId | null {
   const blockQ = blockOf(q);
   const blockR = blockOf(r);
   if (blockQ === 0 || blockR === 0) {
     return null;
   }
-  if (q * q + r * r <= CAPITAL_RADIUS_LOTS * CAPITAL_RADIUS_LOTS) {
-    return 'CAPITAL';
+  if (q * q + r * r <= GENESIS_RADIUS_LOTS * GENESIS_RADIUS_LOTS) {
+    return null;
   }
-  return cityAtQuadrant(blockQ > 0 ? 1 : -1, blockR > 0 ? 1 : -1);
+  return 'GENESIS';
 }
 
 function chunkOf(cell: number): number {
@@ -144,15 +146,15 @@ function chunkDistances(q: number, r: number, chunkQ: number, chunkR: number): {
   };
 }
 
-/** Pure geometry, so it is shared by every layout; only chunks on an avenue or the Capital need a scan. */
+/** Pure geometry, so it is shared by every layout; only chunks on an avenue or Genesis need a scan. */
 const mixedChunkCapacity = new Map<string, number>();
 
 function chunkCapacity(city: CityId, chunkQ: number, chunkR: number): number {
   const q0 = chunkFirstLot(chunkQ);
   const r0 = chunkFirstLot(chunkR);
   const touchesAvenue = chunkQ === 0 || chunkR === 0;
-  const touchesCapital = chunkDistances(0, 0, chunkQ, chunkR).near <= CAPITAL_RADIUS_LOTS;
-  if (!touchesAvenue && !touchesCapital) {
+  const touchesGenesis = chunkDistances(0, 0, chunkQ, chunkR).near <= GENESIS_RADIUS_LOTS;
+  if (!touchesAvenue && !touchesGenesis) {
     return territoryOf(q0, r0) === city ? CHUNK_LOTS * CHUNK_LOTS : 0;
   }
   const key = fillKey(city, chunkQ, chunkR);
@@ -291,7 +293,7 @@ function nearestRoom(layout: CityLayout, city: CityId, centerQ: number, centerR:
   throw new Error(`No room found in ${city} after ${MAX_CHUNK_RINGS} chunk rings.`);
 }
 
-/** Next point of a city spiral that satisfies `accept`, jumping over dense areas via the chunk index. */
+/** Next point of the Genesis spiral that satisfies `accept`, jumping over dense areas via the chunk index. */
 function advanceSpiral(
   layout: CityLayout,
   city: CityId,
@@ -366,8 +368,8 @@ function newSpiral(centerQ: number, centerR: number, scale: number): SpiralCurso
 }
 
 function assertPlaceable(city: CityId): void {
-  if (city === 'CAPITAL') {
-    throw new Error('The Capital holds no properties; every idol belongs to a quadrant city.');
+  if (city !== 'GENESIS') {
+    throw new Error(`Only Genesis holds properties; got ${String(city)}.`);
   }
 }
 

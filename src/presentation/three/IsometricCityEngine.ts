@@ -70,8 +70,8 @@ const TOWER_FILES: readonly string[] = [
   'tower_twist.glb',
   'tower_crown.glb',
 ];
-/** Civic plazas keep these; idol landmarks grow as towers (A4). */
-const VENUE_FILES = { MUSIC: 'venue_music.glb', SPORTS: 'venue_sports.glb', CREATORS: 'venue_creators.glb', COMMUNITY: 'venue_community.glb' } as const;
+/** Legacy civic venue meshes (kept on disk); Genesis uses the plaza kit only. */
+const VENUE_FILES = { GENESIS: 'venue_community.glb' } as const;
 /** Title-deed portrait size (CSS pixels; rendered at 2×). */
 const PORTRAIT_W = 320;
 const PORTRAIT_H = 220;
@@ -110,12 +110,16 @@ const CHUNK_CHECK_MS = 250;
 const MAX_VISIBLE_CHUNKS = 64;
 /** Below this zoom (relative to the fitted view) trees, lamps, benches, markings and cars are skipped. */
 const DETAIL_ZOOM_RATIO = 0.45;
-/** Zoom (relative to the whole city fitted on screen) below which the view flips to the planet, and back (hysteresis). */
-const PLANET_ENTER_RATIO = 0.42;
-const PLANET_LEAVE_RATIO = 0.5;
+/**
+ * Zoom (relative to the whole city fitted on screen) below which the view
+ * flips to the planet, and back (hysteresis). Kept very low so thousands of
+ * homes stay on the flat map for a long zoom-out before the sphere appears.
+ */
+const PLANET_ENTER_RATIO = 0.055;
+const PLANET_LEAVE_RATIO = 0.09;
 /** Planet-view framing: whole planet on screen, and how far out the wheel may go. */
-const PLANET_VIEW_RATIO = 0.3;
-const PLANET_MIN_RATIO = 0.12;
+const PLANET_VIEW_RATIO = 0.07;
+const PLANET_MIN_RATIO = 0.03;
 const OPENING_ZOOM_RATIO = 2.6;
 
 const WALL_PASTELS = ['#c9b8ff', '#ffc4a3', '#a9c2ff', '#bde5cf', '#f7b5d1', '#e3d7c1', '#9fd9e8'].map((c) => new THREE.Color(c));
@@ -429,7 +433,7 @@ export class IsometricCityEngine {
     this.links.raycast = () => undefined;
     this.world.add(this.links);
 
-    // Floating golden-spiral hologram over the Capital: the naoeumfa mark in light.
+    // Floating golden-spiral hologram over Genesis: the naoeumfa mark in light.
     const dots = 89;
     this.hologram = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.9, 1), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }), dots);
     const m = new THREE.Matrix4();
@@ -1355,7 +1359,7 @@ export class IsometricCityEngine {
     }
   }
 
-  /** The two grand avenues that split the planet into its four cities — paved as far as the city has grown. */
+  /** The two grand avenues that cross at Genesis — paved as far as the city has grown. */
   private addAvenues(minBx: number, maxBx: number, minBz: number, maxBz: number, compose: Compose, detail: boolean): void {
     const loX = minBx - 1;
     const hiX = maxBx + 1;
@@ -1413,7 +1417,7 @@ export class IsometricCityEngine {
       return plaza.bx === bx && plaza.bz === bz;
     });
     const color = tint ?? (city ? new THREE.Color(city.colorHex) : AVENUE_NEON);
-    if (!city || city.id === 'CAPITAL') {
+    if (!city || city.id === 'GENESIS') {
       this.plazaKit?.parts.forEach(({ part }) => part.add(compose(cx, PLATFORM_H, cz), color));
       return;
     }
@@ -1423,7 +1427,7 @@ export class IsometricCityEngine {
   private addCivicVenue(site: CivicSite, compose: Compose): void {
     const cx = site.bx * PITCH;
     const cz = site.bz * PITCH;
-    const city = site.city === 'CAPITAL' ? 'COMMUNITY' : site.city;
+    const city = site.city;
     const kit = this.venueKits.get(city);
     const tint = new THREE.Color(this.cities.find((c) => c.id === site.city)?.colorHex ?? '#3ad6ff');
     if (!kit) {
@@ -1940,8 +1944,8 @@ export class IsometricCityEngine {
     this.grid.visible = !planet;
     this.scene.fog = planet ? null : this.fog;
     for (const [id, label] of this.cityLabels) {
-      // The Capital holds no homes; its plaza is the planet's centre, not a city to count.
-      label.sprite.visible = planet && id !== 'CAPITAL';
+      // Genesis is the planet's centre — show its name from space.
+      label.sprite.visible = planet && id === 'GENESIS';
     }
     this.options.onViewChange?.(view);
   }

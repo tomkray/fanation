@@ -2,8 +2,8 @@
  * Growth preview: grows a city with the real ledger rules from a seeded,
  * reproducible stream of comments (big idols, fans who become idols, unknown
  * idols named before they ever comment) and reports, at each stage, how far
- * fans live from their idol, whether cities run into each other and how long
- * each placement took. Writes a top-down map per stage to data/previews/.
+ * fans live from their idol, whether lots overlap, and how long each
+ * placement took. Writes a top-down map per stage to data/previews/.
  *
  *   npm run growth:preview -- --comments 60000
  */
@@ -15,7 +15,7 @@ import { deflateSync, crc32 } from 'node:zlib';
 import { applyCommentEvent, CityState, createCityState, DEFAULT_LEDGER_CONFIG, fansOf } from '../src/core/cityLedger.js';
 import { settleLayout } from '../src/core/settle.js';
 import { CITY_SITES, CityId } from '../src/core/cities.js';
-import { BLOCK_PITCH_METERS, CAPITAL_RADIUS_LOTS, cellToMeters, LOT_SIZE_METERS, territoryOf } from '../src/core/cityLayout.js';
+import { BLOCK_PITCH_METERS, GENESIS_RADIUS_LOTS, cellToMeters, LOT_SIZE_METERS, territoryOf } from '../src/core/cityLayout.js';
 import { resolveFandomMetadata } from '../src/core/fandomRegistry.js';
 import { LandPlot } from '../src/core/types.js';
 
@@ -243,7 +243,7 @@ function renderMap(state: CityState, path: string, maxPixels = 1600): void {
     paint(s, 0, avenueWidth, [22, 34, 70]);
     paint(0, s, avenueWidth, [22, 34, 70]);
   }
-  const capital = cellToMeters(CAPITAL_RADIUS_LOTS, 0).x;
+  const capital = cellToMeters(GENESIS_RADIUS_LOTS, 0).x;
   for (let a = 0; a < Math.PI * 2; a += 0.01) {
     paint(Math.cos(a) * capital, Math.sin(a) * capital, metersPerPixel * 3, [58, 214, 255]);
   }

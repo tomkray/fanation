@@ -1,7 +1,7 @@
 /**
- * Catalogued fandoms shown with curated names, categories and colours. Any
- * other handle fans mention still competes in the global ranking as `UNLISTED`,
- * with a colour derived from its handle.
+ * Catalogued fandoms shown with curated names, categories and colours.
+ * Category is a filter and neon only (Axiom A3) — every idol still anchors on
+ * the Genesis spiral. Any other handle fans mention competes as `UNLISTED`.
  */
 
 import { FandomMetadata } from './types.js';

@@ -102,7 +102,8 @@ const MOMENTUM_TOP_N = 200;
 const MOMENTUM_SAMPLE_MS = 1_000;
 const CHANGE_FEED_VERSIONS = 5_000;
 const MAX_CHUNKS_PER_REQUEST = 64;
-const MIN_PLANET_RADIUS_M = 3_000;
+/** Floor for the sphere once it appears — sized for a city of thousands of lots. */
+const MIN_PLANET_RADIUS_M = 40_000;
 
 export type CityChangeListener = (version: number) => void;
 export type CommentObserver = (events: readonly InstagramCommentEvent[], source: CommentSourceName) => void;

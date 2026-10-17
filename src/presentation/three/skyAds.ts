@@ -117,7 +117,7 @@ export class SkyAds {
       if (!ad) {
         return;
       }
-      const radius = city.id === 'CAPITAL' ? 900 : THREE.MathUtils.clamp(Math.sqrt(Math.max(1, city.properties)) * 9, 200, 1400);
+      const radius = city.id === 'GENESIS' ? 900 : THREE.MathUtils.clamp(Math.sqrt(Math.max(1, city.properties)) * 9, 200, 1400);
       this.addFlyer(this.zeppelin(ad), city.x, city.z, radius, ZEPPELIN_ALTITUDE + i * 22, i * 1.3, (i % 2 === 0 ? 1 : -1) * (24 / radius));
     });
   }

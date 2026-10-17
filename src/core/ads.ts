@@ -26,7 +26,19 @@ export const AD_HEADLINE_MAX = 28;
 export const AD_TAGLINE_MAX = 44;
 
 export type AdCity = CityId | 'ALL';
-const AD_CITIES: readonly AdCity[] = ['ALL', 'CAPITAL', 'MUSIC', 'SPORTS', 'CREATORS', 'COMMUNITY'];
+const AD_CITIES: readonly AdCity[] = ['ALL', 'GENESIS'];
+/** Older clients may still send quadrant names; they all mean the one planet. */
+const LEGACY_AD_CITIES: readonly string[] = ['CAPITAL', 'MUSIC', 'SPORTS', 'CREATORS', 'COMMUNITY'];
+
+function normalizeAdCity(city: string): AdCity | null {
+  if ((AD_CITIES as readonly string[]).includes(city)) {
+    return city as AdCity;
+  }
+  if (LEGACY_AD_CITIES.includes(city)) {
+    return 'GENESIS';
+  }
+  return null;
+}
 
 export interface AdCreative {
   readonly headline: string;
@@ -89,8 +101,12 @@ export function validateAdRequest(input: unknown): AdValidation {
   if (typeof placement !== 'string' || !(AD_PLACEMENTS as readonly string[]).includes(placement)) {
     return { ok: false, error: `placement must be one of ${AD_PLACEMENTS.join(', ')}.` };
   }
-  const city = body.city ?? 'ALL';
-  if (typeof city !== 'string' || !(AD_CITIES as readonly string[]).includes(city)) {
+  const rawCity = body.city ?? 'ALL';
+  if (typeof rawCity !== 'string') {
+    return { ok: false, error: `city must be one of ${AD_CITIES.join(', ')}.` };
+  }
+  const city = normalizeAdCity(rawCity);
+  if (city === null) {
     return { ok: false, error: `city must be one of ${AD_CITIES.join(', ')}.` };
   }
   const days = body.days;
@@ -123,7 +139,7 @@ export function validateAdRequest(input: unknown): AdValidation {
     ok: true,
     request: {
       placement: placement as AdPlacement,
-      city: city as AdCity,
+      city,
       days,
       contactEmail,
       creative: { headline, tagline, partnerHandle, backgroundHex: backgroundHex.toUpperCase(), accentHex: accentHex.toUpperCase() },

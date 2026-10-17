@@ -59,15 +59,15 @@ function houseInventory(nowIso: string, demo: boolean): AdCampaign[] {
     const partner = (id: string, request: AdRequest): AdCampaign => ({ ...houseCampaign(id, request, nowIso), house: false, days: AD_MAX_DAYS });
     house.push(
       partner(`${DEMO_PREFIX}neoncola`, {
-        placement: 'ZEPPELIN', city: 'MUSIC', days: AD_MAX_DAYS, contactEmail,
+        placement: 'ZEPPELIN', city: 'GENESIS', days: AD_MAX_DAYS, contactEmail,
         creative: { headline: 'NEON COLA', tagline: 'The official drink of fandoms', partnerHandle: 'neoncola.demo', backgroundHex: '#3A0010', accentHex: '#FF375F' },
       }),
       partner(`${DEMO_PREFIX}pulse`, {
-        placement: 'ZEPPELIN', city: 'SPORTS', days: AD_MAX_DAYS, contactEmail,
+        placement: 'ZEPPELIN', city: 'GENESIS', days: AD_MAX_DAYS, contactEmail,
         creative: { headline: 'PULSE Headphones', tagline: 'Hear the stadium roar', partnerHandle: 'pulseaudio.demo', backgroundHex: '#002A1A', accentHex: '#30D158' },
       }),
       partner(`${DEMO_PREFIX}starfuel`, {
-        placement: 'BILLBOARD', city: 'CREATORS', days: AD_MAX_DAYS, contactEmail,
+        placement: 'BILLBOARD', city: 'GENESIS', days: AD_MAX_DAYS, contactEmail,
         creative: { headline: 'STARFUEL Energy', tagline: 'Create all night', partnerHandle: 'starfuel.demo', backgroundHex: '#2A1800', accentHex: '#FF9F0A' },
       }),
     );

@@ -16,7 +16,7 @@ export const DUEL_FANDOM_XP_PER_VOTE = 5;
 export const DUEL_MIN_MINUTES = 5;
 export const DUEL_MAX_MINUTES = 7 * 24 * 60;
 
-export type DuelArena = Exclude<CityId, 'CAPITAL'>;
+export type DuelArena = CityId;
 export type DuelStatus = 'LIVE' | 'FINISHED';
 
 export interface DuelSchedule {

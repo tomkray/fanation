@@ -55,7 +55,7 @@ function standing(fandomHandle: string, fans: number, reputationXp: number) {
     district: { gridQ: 0, gridR: 0, x: 0, z: 0 },
     footprint: 'LOT' as const,
     propertyClass: propertyClassFor(fans, 'LOT'),
-    city: 'COMMUNITY' as const,
+    city: 'GENESIS' as const,
   };
 }
 
@@ -68,7 +68,7 @@ describe('comments name the idol; the author is the fan (A1, A2)', () => {
       newFan: true,
       idolFans: 1,
       land: { minterHandle: 'alice_fan', idolHandle: 'taylorswift', fandomHandle: 'taylorswift' },
-      idol: { minterHandle: 'taylorswift', footprint: 'BLOCK', city: 'MUSIC', idolHandle: null },
+      idol: { minterHandle: 'taylorswift', footprint: 'BLOCK', city: 'GENESIS', idolHandle: null },
     });
     expect(applyCommentEvent(state, comment('alice_fan', '@taylorswift again'))).toMatchObject({ code: 'POST_ALREADY_COUNTED' });
     expect(applyCommentEvent(state, comment('alice_fan', '@taylorswift', 'post_2'))).toMatchObject({
@@ -89,14 +89,14 @@ describe('comments name the idol; the author is the fan (A1, A2)', () => {
     const state = createCityState();
     expect(applyCommentEvent(state, comment('Bob.Fan', "I'm @Bob.Fan and I stan @fcbarcelona."))).toMatchObject({
       land: { minterHandle: 'bob.fan', idolHandle: 'fcbarcelona' },
-      idol: { city: 'SPORTS' },
+      idol: { city: 'GENESIS' },
     });
     expect(applyCommentEvent(state, comment('carla', '@my_bestie come join @bts.bighitofficial'))).toMatchObject({
       land: { idolHandle: 'bts.bighitofficial' },
     });
     expect(applyCommentEvent(state, comment('dan', '@local_band_xyz forever'))).toMatchObject({
       land: { idolHandle: 'local_band_xyz' },
-      idol: { footprint: 'LOT', city: 'COMMUNITY' },
+      idol: { footprint: 'LOT', city: 'GENESIS' },
     });
   });
 
@@ -147,7 +147,7 @@ describe('the same rule for everyone', () => {
     const state = createCityState();
     applyCommentEvent(state, comment('dan', '@carol_artist best ever'));
     const anchor = propertyOf(state, 'carol_artist');
-    expect(anchor).toMatchObject({ footprint: 'LOT', city: 'COMMUNITY', idolHandle: null });
+    expect(anchor).toMatchObject({ footprint: 'LOT', city: 'GENESIS', idolHandle: null });
     // Named by dan's first comment: carol already holds her idol royalty.
     expect(state.tokenBalancesMicro.get('carol_artist')).toBe(100_000_000n);
 
@@ -211,10 +211,10 @@ describe('cities, districts and streaming chunks (A3)', () => {
     expect([chunkKeyOfCell(0, 0), chunkKeyOfCell(22, 0), chunkKeyOfCell(23, -2)]).toEqual(['0:0', '0:0', '1:-1']);
   });
 
-  it('splits the plane into four unbounded cities along two grand avenues, around the Capital', () => {
-    expect([territoryOf(0, 500), territoryOf(-500, 1), territoryOf(5, 5)]).toEqual([null, null, 'CAPITAL']);
+  it('keeps avenues and the Genesis plaza empty, and places the whole planet as one city', () => {
+    expect([territoryOf(0, 500), territoryOf(-500, 1), territoryOf(5, 5)]).toEqual([null, null, null]);
     expect([territoryOf(900, -900), territoryOf(900, 900), territoryOf(-900, 900), territoryOf(-900, -900)]).toEqual([
-      'MUSIC', 'SPORTS', 'CREATORS', 'COMMUNITY',
+      'GENESIS', 'GENESIS', 'GENESIS', 'GENESIS',
     ]);
   });
 
@@ -265,8 +265,8 @@ describe('cities, districts and streaming chunks (A3)', () => {
     }
     const cells = new Set(state.lands.map((l) => `${l.coordinates.gridQ}:${l.coordinates.gridR}`));
     expect(cells.size).toBe(state.lands.length);
-    expect(propertyOf(state, 'realmadrid').city).toBe('SPORTS');
-    expect(propertyOf(state, 'mrbeast').city).toBe('CREATORS');
+    expect(propertyOf(state, 'realmadrid').city).toBe('GENESIS');
+    expect(propertyOf(state, 'mrbeast').city).toBe('GENESIS');
 
     const nearOwn = state.lands.filter((land) => {
       if (!land.idolHandle) {
@@ -276,8 +276,11 @@ describe('cities, districts and streaming chunks (A3)', () => {
       return idols.every((other) => own <= lotDistance(land, propertyOf(state, other)));
     });
     expect(nearOwn.length).toBe(400);
-    const music = citySite('MUSIC');
-    expect(Math.hypot(propertyOf(state, 'taylorswift').coordinates.gridQ - music.centerQ, propertyOf(state, 'taylorswift').coordinates.gridR - music.centerR)).toBeLessThan(15);
+    const genesis = citySite('GENESIS');
+    const taylor = propertyOf(state, 'taylorswift');
+    const dist = Math.hypot(taylor.coordinates.gridQ - genesis.centerQ, taylor.coordinates.gridR - genesis.centerR);
+    expect(dist).toBeGreaterThanOrEqual(15);
+    expect(dist).toBeLessThan(40);
     expect(computeCityStandings(state).every((s) => s.fans === 100 && s.reputationXp === 10_000)).toBe(true);
   });
 });

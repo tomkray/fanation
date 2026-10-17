@@ -1,11 +1,11 @@
 /**
  * The city reorganizes itself (Axiom A3). Who owns what, the fan graph, XP and
  * $NEFA never change; positions are a view of the fan tree that is rebuilt
- * from scratch at each layout epoch:
+ * from scratch at each layout epoch around Genesis:
  *
- * - in each city the founding idols (catalogued landmarks, and people who were
- *   named before they had a home) are placed biggest following first, so the
- *   largest idols always hold the centre and move towards it as they grow;
+ * - founding idols (catalogued landmarks, and people who were named before
+ *   they had a home) are placed biggest following first, so the largest idols
+ *   always hold the centre and move towards Genesis as they grow;
  * - each idol's tree is then laid out depth-first in arrival order: a fan's
  *   home goes next to their idol, and if that fan has fans of their own, their
  *   whole neighbourhood is built right there before the idol's next fan.
@@ -25,7 +25,11 @@ function footprintLots(land: LandPlot): number {
 }
 
 function withCell(land: LandPlot, cell: GridCell): LandPlot {
-  return { ...land, coordinates: { ...cell, ...cellToMeters(cell.gridQ, cell.gridR) } };
+  return {
+    ...land,
+    city: 'GENESIS',
+    coordinates: { ...cell, ...cellToMeters(cell.gridQ, cell.gridR) },
+  };
 }
 
 export function settleLayout(state: CityState): void {
