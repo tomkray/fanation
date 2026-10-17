@@ -111,6 +111,7 @@ function main(): void {
       ? new DmLoginService({
           graphBaseUrl: config.meta.graphBaseUrl,
           igUserId: config.meta.igUserId,
+          officialHandle: config.meta.officialUsername,
           accessToken: config.meta.igAccessToken,
           tokenTransport: config.meta.tokenTransport,
           publicUrl: config.publicUrl,

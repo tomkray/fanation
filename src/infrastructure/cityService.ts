@@ -887,6 +887,10 @@ export class CityService {
       logger.warn('activity_comment_with_market_source', { seq: record.seq });
       return;
     }
+    // The official account's own replies are not activity: it never plays.
+    if (result.outcome.status === 'REJECTED' && result.outcome.code === 'OWN_ACCOUNT_COMMENT') {
+      return;
+    }
     const { event } = record.event;
     this.activity.unshift({
       commentId: event.commentId,

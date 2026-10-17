@@ -8,7 +8,14 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { applyCommentEvent, applyLedgerEvent, createCityState, OfferError } from '../src/core/cityLedger.js';
+import {
+  applyCommentEvent,
+  applyLedgerEvent,
+  createCityState,
+  DEFAULT_LEDGER_CONFIG,
+  OfferError,
+  OfficialAccountError,
+} from '../src/core/cityLedger.js';
 import { InstagramCommentEvent } from '../src/core/types.js';
 import { AuthService, LOGIN_LINK_TTL_MS, LOGIN_TOKEN_PATTERN } from '../src/infrastructure/auth/authService.js';
 
@@ -86,6 +93,49 @@ describe('wallet ledger events', () => {
     expect(() => applyLedgerEvent(state, { kind: 'listing_cancelled', listingId: 'lst_a', sellerHandle: 'intruder' })).toThrow(/did not create/);
     applyLedgerEvent(state, { kind: 'listing_cancelled', listingId: 'lst_a', sellerHandle: 'seller' });
     expect(state.listings.get('lst_a')?.status).toBe('CANCELLED');
+  });
+});
+
+describe('the official account never plays', () => {
+  it('gets no home, XP, $NEFA, idol status, listing, bid, purchase or ad', () => {
+    const state = createCityState({ ...DEFAULT_LEDGER_CONFIG, officialAccountHandle: 'naoeumfa' });
+    applyCommentEvent(state, commentBy('owner', '@realmadrid', 'n1'));
+    const plot = state.plotIndexByMinter.get('owner') ?? -1;
+
+    // Its own comments, being named, and being tagged as a friend all count for nothing.
+    expect(applyCommentEvent(state, commentBy('naoeumfa', '@taylorswift', 'n2'))).toMatchObject({ code: 'OWN_ACCOUNT_COMMENT' });
+    expect(applyCommentEvent(state, commentBy('fan_a', '@NaoEumFa', 'n3'))).toMatchObject({ code: 'INVALID_COMMENT_FORMAT' });
+    applyCommentEvent(state, commentBy('fan_b', '@naoeumfa @taylorswift', 'n4'));
+    applyCommentEvent(state, commentBy('owner', '@realmadrid @naoeumfa', 'n5'));
+
+    const official = 'naoeumfa';
+    expect(state.plotIndexByMinter.has(official)).toBe(false);
+    expect(state.plotsByOwner.get(official)?.size ?? 0).toBe(0);
+    expect(state.reputationXpByHandle.get(official) ?? 0).toBe(0);
+    expect(state.reputationXpByFandom.get(official) ?? 0).toBe(0);
+    expect(state.fansByIdol.get(official) ?? 0).toBe(0);
+    expect(state.tokenBalancesMicro.get(official) ?? 0n).toBe(0n);
+    expect(state.activeHandles.has(official)).toBe(false);
+
+    const send = { kind: 'token_transferred', transfer: { transferId: 't_off', fromHandle: 'owner', toHandle: '@NaoEumFa', amountMicro: 1_000_000n, atIso: '' } } as const;
+    const before = state.tokenBalancesMicro.get('owner');
+    expect(() => applyLedgerEvent(state, send)).toThrow(OfficialAccountError);
+    expect(state.tokenBalancesMicro.get('owner')).toBe(before);
+
+    expect(() => applyLedgerEvent(state, { kind: 'offer_made', offer: { offerId: 'off_x', plotIndex: plot, fromHandle: official, amountBrlCents: 10_000n, atIso: '' } })).toThrow(OfficialAccountError);
+    expect(() =>
+      applyLedgerEvent(state, { kind: 'lot_ad_set', plotIndex: plot, ownerHandle: official, creative: null })
+    ).toThrow(OfficialAccountError);
+
+    applyLedgerEvent(state, {
+      kind: 'listing_created',
+      input: { listingId: 'lst_o', sellerHandle: 'owner', assetType: 'LAND_PLOT', plotIndex: plot, tokenAmountMicro: null, priceBrlCents: 5_000n, priceUsdtMicro: 1n, priceBtcSats: 1n, nowIso: '' },
+    });
+    expect(() =>
+      applyLedgerEvent(state, { kind: 'checkout_locked', request: { listingId: 'lst_o', buyerHandle: official, paymentMethod: 'PIX', checkoutRef: 'ck', nowMs: 1 } })
+    ).toThrow(OfficialAccountError);
+    expect(state.listings.get('lst_o')?.status).toBe('OPEN');
+    expect(state.offers.size).toBe(0);
   });
 });
 

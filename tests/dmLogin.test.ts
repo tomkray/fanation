@@ -41,6 +41,7 @@ function harness(usernames: Record<string, string>) {
   const dm = new DmLoginService({
     graphBaseUrl: 'https://graph.instagram.com/v23.0',
     igUserId: 'me',
+    officialHandle: 'naoeumfa',
     accessToken: 'test-token',
     tokenTransport: 'header',
     publicUrl: 'https://www.naoeumfa.com',
@@ -103,6 +104,12 @@ describe('login by Direct', () => {
     expect(await h.dm.onMessage(message('A', 'entrar', 'm4'))).toBe('sent');
     expect(await h.dm.onMessage(message('A', 'entrar', 'm5'))).toBe('rate_limited');
     expect(h.sent).toHaveLength(3);
+  });
+
+  it('never signs in the official account', async () => {
+    const h = harness({ OFFICIAL: 'NaoEumFa' });
+    expect(await h.dm.onMessage(message('OFFICIAL', 'entrar', 'm1'))).toBe('refused');
+    expect(h.sent).toHaveLength(0);
   });
 
   it('never trusts a sender Meta cannot name', async () => {

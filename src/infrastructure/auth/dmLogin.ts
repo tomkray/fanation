@@ -23,6 +23,8 @@ export interface DmLoginOptions {
   readonly graphBaseUrl: string;
   /** The official account (`me` resolves to the token's own account). */
   readonly igUserId: string;
+  /** Its @: it runs the game and never signs in to play. */
+  readonly officialHandle: string | null;
   readonly accessToken: string;
   readonly tokenTransport: 'query' | 'header';
   /** Where the link opens, e.g. https://www.naoeumfa.com */
@@ -67,6 +69,10 @@ export class DmLoginService {
     const username = await this.lookupUsername(message.senderId);
     if (!username) {
       return 'lookup_failed';
+    }
+    if (username === this.options.officialHandle) {
+      logger.warn('dm_login_official_refused');
+      return 'refused';
     }
     const identity = this.options.identities.resolve(message.senderId, username);
     if (!identity.ok) {

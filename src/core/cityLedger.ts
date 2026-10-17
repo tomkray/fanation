@@ -135,6 +135,24 @@ export class OfferError extends Error {
   }
 }
 
+/**
+ * The official account runs the game; it never plays it. It gets no home, no
+ * XP, no $NEFA, no listing, bid, purchase or ad, and is never anyone's idol.
+ */
+export class OfficialAccountError extends Error {
+  constructor(handle: string) {
+    super(`@${handle} is the official account and never takes part in the game.`);
+    this.name = 'OfficialAccountError';
+  }
+}
+
+function assertPlayer(state: CityState, handle: string): void {
+  const official = state.config.officialAccountHandle;
+  if (official !== null && handle.trim().toLowerCase().replace(/^@/, '') === official) {
+    throw new OfficialAccountError(official);
+  }
+}
+
 export type LedgerEvent =
   | { readonly kind: 'comment'; readonly event: InstagramCommentEvent }
   | { readonly kind: 'listing_created'; readonly input: CreateListingInput }
@@ -547,6 +565,7 @@ function requireListing(state: CityState, listingId: string): MarketListing {
 }
 
 export function applyListingCreated(state: CityState, input: CreateListingInput): MarketListing {
+  assertPlayer(state, input.sellerHandle);
   if (state.listings.has(input.listingId)) {
     throw new MarketError('ALREADY_LISTED', `Listing id ${input.listingId} already exists.`);
   }
@@ -589,6 +608,7 @@ export function applyListingCancelled(state: CityState, listingId: string, selle
 }
 
 export function applyLotAdSet(state: CityState, plotIndex: number, ownerHandle: string, creative: LotAd | null): LotAd | null {
+  assertPlayer(state, ownerHandle);
   const land = Number.isInteger(plotIndex) ? state.lands[plotIndex] : undefined;
   if (!land) {
     throw new LotAdError('NO_SUCH_PLOT', `Plot #${plotIndex} does not exist.`);
@@ -606,6 +626,8 @@ export function applyLotAdSet(state: CityState, plotIndex: number, ownerHandle: 
 }
 
 export function applyTokenTransfer(state: CityState, transfer: TokenTransfer): TokenTransfer {
+  assertPlayer(state, transfer.fromHandle);
+  assertPlayer(state, transfer.toHandle);
   if (transfer.amountMicro <= 0n) {
     throw new MarketError('INVALID_PRICE', 'Transfer amount must be a positive integer.');
   }
@@ -618,6 +640,7 @@ export function applyTokenTransfer(state: CityState, transfer: TokenTransfer): T
 }
 
 export function applyCheckoutLocked(state: CityState, request: CheckoutRequest): MarketListing {
+  assertPlayer(state, request.buyerHandle);
   const locked = lockListingForCheckout(requireListing(state, request.listingId), request);
   state.listings.set(locked.listingId, locked);
   return locked;
@@ -625,6 +648,7 @@ export function applyCheckoutLocked(state: CityState, request: CheckoutRequest):
 
 /** Moves the property or the tokens. Reputation and fans never move: they belong to the profile. */
 export function applyPaymentSettled(state: CityState, proof: SettlementProof): SettlementReceipt {
+  assertPlayer(state, proof.buyerHandle);
   if (state.settledTxRefs.has(proof.externalTxRef)) {
     throw new MarketError('INVALID_TX_REF', `Payment ${proof.externalTxRef} was already applied.`);
   }
@@ -665,6 +689,7 @@ function requirePendingOffer(state: CityState, offerId: string): PropertyOffer {
 
 /** A bid to the current owner. One open bid per bidder per property: a new one replaces the old. */
 export function applyOfferMade(state: CityState, input: OfferInput): PropertyOffer {
+  assertPlayer(state, input.fromHandle);
   const land = Number.isInteger(input.plotIndex) ? state.lands[input.plotIndex] : undefined;
   if (!land) {
     throw new OfferError('NO_SUCH_PLOT', `Plot #${input.plotIndex} does not exist.`);

@@ -123,6 +123,9 @@ export async function handleWalletRoute(ctx: WalletContext, req: IncomingMessage
       if (!handle) {
         throw new HttpError(400, 'INVALID_HANDLE', 'Enter a valid Instagram @handle.');
       }
+      if (handle === config.meta.officialUsername) {
+        throw new HttpError(403, 'OFFICIAL_ACCOUNT', 'The official account never signs in to play.');
+      }
       // Demo stands in for Direct; the browser then goes through the same peek → redeem.
       sendJson(res, 201, { token: auth.createLoginLink(handle, `sandbox_${handle}`) });
       return true;

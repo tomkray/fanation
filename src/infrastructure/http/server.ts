@@ -30,7 +30,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { validateAdRequest } from '../../core/ads.js';
-import { OfferError, OfferErrorCode } from '../../core/cityLedger.js';
+import { OfferError, OfferErrorCode, OfficialAccountError } from '../../core/cityLedger.js';
 import { MarketError, priceForMethod } from '../../core/marketplace.js';
 import { PublicConfigDto, WorldSummaryDto } from '../../shared/apiContract.js';
 import { logger } from '../../utils/logger.js';
@@ -548,6 +548,8 @@ export function createNaoeumfaServer(config: AppConfig, services: NaoeumfaServic
           sendError(res, 503, 'RAIL_NOT_CONFIGURED', err.message);
         } else if (err instanceof OfferError) {
           sendError(res, OFFER_ERROR_STATUS[err.code], err.code, err.message);
+        } else if (err instanceof OfficialAccountError) {
+          sendError(res, 403, 'OFFICIAL_ACCOUNT', err.message);
         } else if (err instanceof AuthLimitError) {
           sendError(res, 429, 'AUTH_LIMIT', err.message);
         } else {
